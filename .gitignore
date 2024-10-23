@@ -1,0 +1,8 @@
+# mac
+.DS_Store
+
+# python
+__pycache__
+.ipynb_checkpoints/
+
+.cache/

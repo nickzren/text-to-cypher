@@ -1,0 +1,6 @@
+// This Cypher query finds all genes that participate in the mitotic spindle checkpoint
+// and are expressed in the lung.
+
+MATCH (g:Gene)-[:PARTICIPATES_GpBP]->(bp:BiologicalProcess {name: "mitotic spindle checkpoint"})
+MATCH (a:Anatomy {name: "lung"})-[:EXPRESSES_AeG]->(g)
+RETURN g.name AS GeneName, g.identifier AS GeneIdentifier
