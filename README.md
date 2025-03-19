@@ -28,6 +28,9 @@ A lightweight AI agent-based framework that converts natural language queries in
    ```
 2. Run example scripts:
    ```sh
+   # openai framework
+   python src/cypher_openai.py --query "Show compounds that treat both type 2 diabetes mellitus and hypertension."
+
    # autogen framework
    python src/cypher_autogen.py --query "Show compounds that treat both type 2 diabetes mellitus and hypertension."
 

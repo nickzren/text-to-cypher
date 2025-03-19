@@ -13,3 +13,4 @@ dependencies:
     - langchain-openai==0.1.20
     - pyautogen
     - python-dotenv
+    - openai-agents
