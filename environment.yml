@@ -14,3 +14,7 @@ dependencies:
     - pyautogen
     - python-dotenv
     - openai-agents
+    - fastapi
+    - uvicorn
+    - openai
+    
