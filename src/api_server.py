@@ -52,12 +52,12 @@ async def ask_llm(request: QueryRequest):
         "1. **Extract Entities from User Query**\n"
         "- Identify node types (e.g., Gene, Disease, Drug)\n"
         "- Identify relationship types (e.g., Gene_causes_Disease, Drug_targets_Gene)\n"
-        "- Identify relevant properties (e.g., Symbol, name, missense_ratio)\n"
-        "- Recognize constraints or conditions (e.g., missense_ratio > 0.5)\n\n"
+        "- Identify relevant properties (e.g., Symbol, name)\n"
+        "- Recognize constraints or conditions\n\n"
         "2. **Validate Against the Schema**\n"
         "- Check that each node label, relationship type, and property exists in the schema.\n"
         "- If any required element is missing, respond with:\n"
-        "'I could not generate a Cypher script; the required information is not part of the Actio Neo4j schema.'\n\n"
+        "'I could not generate a Cypher script; the required information is not part of the Neo4j schema.'\n\n"
         "3. **Construct the Match Pattern**\n"
         "- Use valid node labels and relationships to build `MATCH` clauses.\n"
         "- Include property filters using `WHERE` clauses if specified by the user.\n\n"
@@ -80,7 +80,6 @@ async def ask_llm(request: QueryRequest):
             temperature=0
         )
         answer = response.choices[0].message.content.strip()
-        print(answer)
         return {"answer": answer}
     except Exception as e:
         return {"error": str(e)}

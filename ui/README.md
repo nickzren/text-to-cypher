@@ -1,6 +1,6 @@
-# Text-to-Cypher UI (Vue + PrimeVue)
+# Text-to-Cypher UI
 
-This directory contains the frontend UI built using Vue 3, PrimeVue, TypeScript, and Vite. It provides an interactive interface to submit queries to OpenAI's API and visualize responses.
+![Text to Cypher UI](src/assets/text-to-cypher-ui-overview.png)
 
 ---
 
