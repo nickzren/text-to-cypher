@@ -1,6 +1,6 @@
 # Text-to-Cypher UI
 
-![Text to Cypher UI](src/assets/text-to-cypher-ui-overview.png)
+<img src="src/assets/text-to-cypher-ui-overview.png" width="700" alt="Text to Cypher UI">
 
 ---
 
