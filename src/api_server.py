@@ -5,6 +5,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from src.utils import get_env_variable
+import time
 
 load_dotenv()
 
@@ -18,6 +19,8 @@ else:
     API_BASE_URL = get_env_variable("DEEPSEEK_API_BASE_URL")
     API_KEY = get_env_variable("DEEPSEEK_API_KEY")
     API_MODEL = get_env_variable("DEEPSEEK_API_MODEL")
+
+OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
 
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
@@ -81,5 +84,44 @@ async def ask_llm(request: QueryRequest):
         )
         answer = response.choices[0].message.content.strip()
         return {"answer": answer}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/assistant/ask")
+async def ask_assistant(request: QueryRequest):
+    user_query = request.query.strip()
+
+    try:
+        # Create a new thread
+        thread = client.beta.threads.create()
+
+        # Send user's message to the assistant thread
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=user_query
+        )
+
+        # Run the assistant
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=OPENAI_ASSISTANT_ID
+        )
+
+        # Wait for completion
+        while run.status in ["queued", "in_progress"]:
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+
+        # Get assistant's response
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        
+        for message in messages.data:
+            if message.role == 'assistant':
+                answer = message.content[0].text.value.strip()
+                return {"answer": answer}
+
+        return {"answer": "No response from assistant."}
+
     except Exception as e:
         return {"error": str(e)}
