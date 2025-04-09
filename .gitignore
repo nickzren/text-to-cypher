@@ -1,8 +1,16 @@
-# mac
+# Ignore Python bytecode and cache directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
 .DS_Store
 
-# python
-__pycache__
-.ipynb_checkpoints/
+# Ignore VS Code settings
+.vscode/
+.idea/
 
-.cache/
+# Ignore FastAPI logs or temp files
+logs/
+*.log
