@@ -71,6 +71,7 @@ async def ask_llm(request: QueryRequest):
         "- Ensure all return elements are valid and defined in the schema.\n\n"
         "5. Generate and Return the Final Cypher Script\n"
         "- Respond with only the final Cypher query. Do not include explanations or formatting.\n"
+        "- Use `OPTIONAL MATCH` only if needed and supported by the schema.\n"
     )
 
     try:
@@ -80,7 +81,7 @@ async def ask_llm(request: QueryRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_query}
             ],
-            temperature=0
+            reasoning_effort="medium"
         )
         answer = response.choices[0].message.content.strip()
         return {"answer": answer}
