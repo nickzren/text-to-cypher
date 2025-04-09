@@ -1,5 +1,17 @@
 # text-to-cypher
-A lightweight AI agent-based framework that converts natural language queries into Cypher scripts for Neo4j, leveraging LLMs for precise query generation.
+A lightweight framework converting natural language queries into Neo4j Cypher scripts using AI agent-based frameworks and LLMs, with optional OpenAI Assistant integration and frontend UI.
+
+## Web-based UI
+
+A new web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cypher UI"> (`ui` directory) has been added, enabling users to easily ask questions and receive Cypher scripts interactively via a browser. It defaults to using the `o3-mini` model or a customizable OpenAI Assistant, providing significantly improved accuracy and lower operational costs compared to the original AI agent setups.
+
+For more details and setup instructions, see the [UI README](ui/README.md).
+
+---
+
+## AI Agent-based Framework Setup
+
+The following instructions are for setting up and running the lightweight AI agent-based frameworks.
 
 ### Prerequisites
 
