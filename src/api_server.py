@@ -81,7 +81,7 @@ async def ask_llm(request: QueryRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_query}
             ],
-            reasoning_effort="medium"
+            reasoning_effort="low"
         )
         answer = response.choices[0].message.content.strip()
         return {"answer": answer}
