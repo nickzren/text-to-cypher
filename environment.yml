@@ -6,15 +6,18 @@ dependencies:
   - python=3.10
   - pip
   - pip:
-    - neo4j
-    - crewai==0.51.1
-    - crewai-tools==0.4.26
-    - langchain==0.2.12
-    - langchain-openai==0.1.20
-    - pyautogen
-    - python-dotenv
-    - openai-agents
-    - fastapi
-    - uvicorn
-    - openai
-    
+      # Core LLM + vector
+      - langchain
+      - langchain-openai
+      - faiss-cpu
+      - openai
+
+      # Neo4j live agent
+      - neo4j
+
+      # Web / API
+      - fastapi
+      - uvicorn
+
+      # Utilities
+      - python-dotenv

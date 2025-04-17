@@ -11,8 +11,8 @@
         <QueryForm
           v-model="query"
           :loading="loading"
-          @submit="askOpenAI"
-          @update:useAssistant="useAssistant = $event"
+          @submit="askAgent"
+          @update:useRemote="useRemote = $event"
         />
 
         <transition name="fade">
@@ -32,16 +32,15 @@ import AnswerCard from '../components/AnswerCard.vue';
 const query = ref('');
 const response = ref('');
 const loading = ref(false);
-const useAssistant = ref(false);
+const useRemote = ref(false);         // ← remote (Assistant) flag
 
-async function askOpenAI() {
+async function askAgent() {
   if (!query.value.trim()) return;
 
-  // Clear previous response immediately on submit
   response.value = '';
   loading.value = true;
 
-  const endpoint = useAssistant.value ? '/api/assistant/ask' : '/api/ask';
+  const endpoint = useRemote.value ? '/api/remote/ask' : '/api/local/ask';
 
   try {
     const res = await axios.post(endpoint, { query: query.value });
@@ -54,17 +53,13 @@ async function askOpenAI() {
   }
 }
 
-// Clear response only when query input is cleared
-watch(query, (newVal) => {
-  if (!newVal.trim()) {
-    response.value = '';
-  }
+// Clear response when input cleared
+watch(query, (val) => {
+  if (!val.trim()) response.value = '';
 });
 
-// Clear response when switching API selection
-watch(useAssistant, () => {
-  response.value = '';
-});
+// Clear when switching local/remote
+watch(useRemote, () => (response.value = ''));
 </script>
 
 <style scoped>
