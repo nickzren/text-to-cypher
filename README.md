@@ -40,6 +40,10 @@ The following instructions are for setting up and running the lightweight AI age
    ```
 2. Run example scripts:
    ```sh
+   export PYTHONPATH="$PYTHONPATH:$(pwd)"
+   # build or refresh the schema index
+   python src/schema_index_builder.py
+
    python src/text2cypher_agent.py 
    Ask> Show compounds that treat both type 2 diabetes mellitus and hypertension.
 

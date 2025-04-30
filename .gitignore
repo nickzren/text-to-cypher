@@ -14,3 +14,5 @@ __pycache__/
 # Ignore FastAPI logs or temp files
 logs/
 *.log
+data/input/neo4j_schema.faiss
+data/input/neo4j_schema.rows.npy
