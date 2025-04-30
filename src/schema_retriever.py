@@ -1,120 +1,133 @@
+#!/usr/bin/env python3
+"""
+schema_retriever.py
+Given a natural-language question, return the minimal relevant slice
+(NodeTypes + RelationshipTypes) from the Neo4j schema.
+"""
+
 from __future__ import annotations
-import json, re, string
+import json, os, re, string, sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, Set
 
 import faiss, numpy as np
+from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 
-# ── configuration ────────────────────────────────────────────────────
-EMBED_MODEL   = "text-embedding-3-small"
-TOP_K_EMBED   = 10              # nearest rows to pull from FAISS
-TOP_N_ROWS    = 20              # rows kept after scoring
+from schema_index_builder import ensure_index          # ← new import
 
-STOPWORDS = {
-    "a","an","the","in","on","of","to","and","with",
-    "for","from","into","by","at","between","among"
-}
-WEIGHT_EXACT  = 3               # weight for exact‑token hits
-# --------------------------------------------------------------------
+# ── env & constants ────────────────────────────────────────────────────
+load_dotenv()
+SCHEMA_PATH = Path(os.environ["NEO4J_SCHEMA_PATH"]).expanduser().resolve()
+INDEX_PATH  = SCHEMA_PATH.with_suffix(".faiss")
+ROWS_PATH   = SCHEMA_PATH.with_suffix(".rows.npy")
 
-def stem(word: str) -> str:
-    """Very light stemmer: strips common suffixes."""
-    for suf in ("ing", "ed", "es", "s"):
-        if word.endswith(suf) and len(word) > len(suf)+2:
-            return word[:-len(suf)]
-    return word
+EMBED_MODEL  = "text-embedding-3-small"
+K_QUESTION, K_TOKEN, TOP_K = 15, 5, 50
+TAU, EXACT_WT, TOKEN_WT    = 0.18, 4.0, 0.5
+DEBUG_SCHEMA  = os.getenv("DEBUG_SCHEMA", "0") == "1"
 
+# ── cheap lexer ---------------------------------------------------------
+STOPWORDS = {"a","an","the","in","on","of","to","and","with",
+             "for","from","into","by","at","between","among"}
+def stem(w: str) -> str:
+    for suf in ("ing","ed","es","s"):
+        if w.endswith(suf) and len(w) > len(suf)+2:
+            return w[:-len(suf)]
+    return w
+def tokens(text: str) -> Set[str]:
+    return {stem(t.lower().strip(string.punctuation))
+            for t in re.findall(r"[A-Za-z0-9_-]+", text)
+            if len(t) > 2 and t.lower() not in STOPWORDS}
 
+# ── main class ----------------------------------------------------------
 class SchemaRetriever:
-    """Return a minimal JSON slice of the schema relevant to a question."""
+    def __init__(self, schema_path: Path = SCHEMA_PATH):
+        ensure_index()                                   # make sure index exists
+        self.schema = json.loads(schema_path.read_text())
+        self.rows   = np.load(ROWS_PATH, allow_pickle=True)
+        self.index  = faiss.read_index(str(INDEX_PATH))
+        self.emb    = OpenAIEmbeddings(model=EMBED_MODEL)
+        self.node_labels = set(self.schema["NodeTypes"])
+        self.rel_types   = set(self.schema["RelationshipTypes"])
 
-    def __init__(self, schema_path: Path):
-        self.schema: Dict = json.loads(schema_path.read_text())
-
-        self.labels: List[str] = list(self.schema["NodeTypes"])
-        self.rels:   List[str] = list(self.schema["RelationshipTypes"])
-        self.props:  List[str] = [
-            f"{parent}.{prop}"
-            for parent, fields in (
-                list(self.schema["NodeTypes"].items())
-                + list(self.schema["RelationshipTypes"].items())
-            )
-            for prop in fields
-        ]
-        self.rows = self.labels + self.rels + self.props
-
-        emb = OpenAIEmbeddings(model=EMBED_MODEL)
-        vecs = np.vstack([emb.embed_query(r) for r in self.rows]).astype("float32")
-        self.index = faiss.IndexFlatL2(vecs.shape[1])
-        self.index.add(vecs)
-        self.emb_model = emb
-
-    # ─────────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
     def __call__(self, question: str) -> str:
-        exact_hits = self._token_hits(question)
-        embed_hits = self._embedding_hits(question)
+        toks   = tokens(question)
+        scores = defaultdict(float)
 
-        scores: Dict[str, float] = {}
-        for row in exact_hits:
-            scores[row] = scores.get(row, 0) + WEIGHT_EXACT
-        for rank, row in enumerate(embed_hits, 1):
-            scores[row] = scores.get(row, 0) + 1 / rank
+        # full-question similarity
+        qv = np.array(self.emb.embed_query(question)).astype("float32")
+        qv /= np.linalg.norm(qv)+1e-8
+        sims, idxs = self.index.search(qv[None,:], K_QUESTION)
+        for i,s in zip(idxs[0], sims[0]):
+            if s>0: scores[self.rows[i]] += s
 
-        top_rows = [r for r, _ in sorted(scores.items(),
-                                         key=lambda kv: -kv[1])][:TOP_N_ROWS]
+        # token similarities + exact match
+        for tok in toks:
+            tv = np.array(self.emb.embed_query(tok)).astype("float32")
+            tv /= np.linalg.norm(tv)+1e-8
+            sims_t, idxs_t = self.index.search(tv[None,:], K_TOKEN)
+            for i,s in zip(idxs_t[0], sims_t[0]):
+                if s>0: scores[self.rows[i]] += TOKEN_WT*s
+
+            for row in self.rows:                        # exact match per row
+                row_toks = {stem(x.lower())
+                            for x in re.split(r'[^A-Za-z0-9]+', row) if x}
+                if tok in row_toks: scores[row] += EXACT_WT
+
+        if not scores: return json.dumps(self.schema, indent=2)
+        best = max(scores.values())
+        cand = [r for r,s in scores.items() if s>=best*TAU][:TOP_K]
 
         labels, rels, props = set(), set(), set()
-        for r in top_rows:
-            if "." in r:
-                props.add(r)
-            elif "_" in r:
-                rels.add(r)
-            else:
-                labels.add(r)
+        for r in cand:
+            if "." in r: props.add(r)
+            elif r in self.rel_types: rels.add(r)
+            elif r in self.node_labels: labels.add(r)
 
-        # properties → parent entity
-        for pr in props:
-            parent = pr.split(".")[0]
-            (labels if parent in self.labels else rels).add(parent)
+        for p in props:                                 # parent propagation
+            parent = p.split(".",1)[0]
+            (labels if parent in self.node_labels else rels).add(parent)
 
-        # relationships → endpoint labels
-        for rel in rels:
+        for rel in list(rels):                          # endpoint propagation
             ep = self.schema["RelationshipTypes"][rel].get("_endpoints")
-            if ep:                                   # use explicit mapping
-                labels.update({lbl for lbl in ep if lbl in self.labels})
-            else:                                    # fallback to name tokens
-                parts = rel.split("_")
-                if len(parts) >= 2:
-                    lft, rgt = parts[0], parts[-1]
-                    if lft in self.labels: labels.add(lft)
-                    if rgt in self.labels: labels.add(rgt)
+            if ep:
+                labels.update(l for l in ep if l in self.node_labels)
+            else:
+                a,b,*_ = rel.split("_")
+                if a in self.node_labels: labels.add(a)
+                if b in self.node_labels: labels.add(b)
 
-        # safety fallback
-        if not labels and not rels:
-            return json.dumps(self.schema, indent=2)
-
-        return json.dumps(
-            {
-                "NodeTypes":         {l: self.schema["NodeTypes"][l] for l in labels},
-                "RelationshipTypes": {r: self.schema["RelationshipTypes"][r] for r in rels},
-            },
-            indent=2,
-        )
-
-    # ── helpers ──────────────────────────────────────────────────────
-    def _embedding_hits(self, question: str) -> List[str]:
-        qv = np.array(self.emb_model.embed_query(question)).astype("float32")
-        _, idx = self.index.search(qv[None, :], TOP_K_EMBED)
-        return [self.rows[i] for i in idx[0]]
-
-    def _token_hits(self, question: str) -> Set[str]:
-        tokens = {
-            stem(w.lower().strip(string.punctuation))
-            for w in re.findall(r"\w+", question)
-            if len(w) > 2 and w.lower() not in STOPWORDS
+        referenced = {
+            lbl for rel in rels
+            for lbl in (
+                self.schema["RelationshipTypes"][rel].get("_endpoints")
+                or [rel.split("_")[0], rel.split("_")[-1]]
+            ) if lbl in self.node_labels
         }
-        hits = set()
-        for tok in tokens:
-            hits |= {row for row in self.rows if re.search(fr"\b{tok}\w*\b", row, re.I)}
-        return hits
+        labels |= referenced                           # ensure endpoints kept
+
+        if DEBUG_SCHEMA:
+            print("labels:",sorted(labels)); print("rels:",sorted(rels))
+
+        return json.dumps({
+            "NodeTypes": {l:self.schema["NodeTypes"][l] for l in sorted(labels)},
+            "RelationshipTypes": {r:self.schema["RelationshipTypes"][r] for r in sorted(rels)}
+        }, indent=2)
+
+# ── CLI ---------------------------------------------------------------
+def main():
+    if not SCHEMA_PATH.exists():
+        sys.exit("schema file not found")
+    retriever = SchemaRetriever()
+    try:
+        while True:
+            q = input("Question> ").strip()
+            if q: print(retriever(q))
+    except KeyboardInterrupt:
+        print()
+
+if __name__ == "__main__":
+    main()
