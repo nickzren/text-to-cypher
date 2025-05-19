@@ -1,97 +1,83 @@
 #!/usr/bin/env python3
-import sys
-from pathlib import Path
+import json
+import uuid
+
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from utils import get_env_variable
-from src.schema_retriever import SchemaRetriever
+from schema_loader import get_schema
+
 
 load_dotenv()
 
-DEBUG       = get_env_variable("DEBUG") == "1"
-PROVIDER    = get_env_variable("LLM_PROVIDER").lower()
-SCHEMA_PATH = Path(get_env_variable("NEO4J_SCHEMA_PATH", resolve_path=True))
+_HISTORY_STORE: dict[str, ChatMessageHistory] = {}
 
-# OpenAI
-OPENAI_BASE  = get_env_variable("OPENAI_API_BASE_URL")
-OPENAI_KEY   = get_env_variable("OPENAI_API_KEY")
-OPENAI_MODEL = get_env_variable("OPENAI_API_MODEL")
-
-# DeepSeek
-DEEPSEEK_BASE  = get_env_variable("DEEPSEEK_API_BASE_URL")
-DEEPSEEK_KEY   = get_env_variable("DEEPSEEK_API_KEY")
-DEEPSEEK_MODEL = get_env_variable("DEEPSEEK_API_MODEL")
-
-# Google Gemini
-GOOGLE_KEY   = get_env_variable("GOOGLE_API_KEY")
-GOOGLE_MODEL = get_env_variable("GOOGLE_MODEL")
-
-SYSTEM_TMPL = (
-    "You are a Cypher-generating assistant. "
-    "Your only reference is the JSON Neo4j schema below.\n\n"
-    "User question:\n{question}\n\n"
-    "Schema:\n{schema}\n\n"
-    "Follow these exact steps for every user query:\n\n"
-    "1. Extract Entities from User Query:\n"
-    "- Parse the question for domain concepts and map them to schema elements.\n"
-    "- Identify candidate node types, relationship types, properties, and constraints.\n\n"
-    "2. Validate Against the Schema:\n"
-    "- Ensure every node label, relationship type, and property exists in the schema exactly.\n\n"
-    "3. Return Clause Strategy:\n"
-    "- RETURN every node and edge mentioned unless the user requests specific properties.\n\n"
-    "4. Final Cypher Script Generation:\n"
-    "- Respond with only the final Cypher query—no commentary or extra text.\n"
+SYSTEM_RULES = (
+    "You are a Cypher-generating assistant. Follow these rules:\n"
+    "1. Use *only* the node labels, relationship types and property names that appear in the JSON schema.\n"
+    "2. If the user is revising a previous Cypher draft, update that draft; otherwise, generate a fresh query.\n"
+    "3. Respond with **Cypher only** – no commentary or explanation.\n"
+    "4. Return nodes and relationships only (omit scalar property values in RETURN).\n"
+    "5. When the user mentions a label/relationship/property absent from the schema, first map it to the closest existing element (exact synonym, substring, or highest-similarity fuzzy match). Ask for clarification only if multiple matches are equally plausible, offering up to three suggestions.\n"
 )
 
 def make_llm():
-    if PROVIDER == "deepseek":
-        return ChatOpenAI(
-            base_url=DEEPSEEK_BASE,
-            api_key=DEEPSEEK_KEY,
-            model=DEEPSEEK_MODEL,
-            temperature=0.0,
-        )
-    if PROVIDER == "google":
-        return ChatGoogleGenerativeAI(
-            model=GOOGLE_MODEL,
-            google_api_key=GOOGLE_KEY,
-            temperature=0.0,
-        )
+    """Return a temperature‑0 ChatOpenAI instance (OpenAI‑only)."""
     return ChatOpenAI(
-        base_url=OPENAI_BASE,
-        api_key=OPENAI_KEY,
-        model=OPENAI_MODEL,
-        temperature=0.0,
+        base_url=get_env_variable("OPENAI_API_BASE_URL"),
+        api_key=get_env_variable("OPENAI_API_KEY"),
+        model=get_env_variable("OPENAI_API_MODEL")
     )
 
 class Text2CypherAgent:
+    """Single‑LLM agent that remembers conversation context + schema."""
+
     def __init__(self):
-        self.retriever = SchemaRetriever(SCHEMA_PATH)
-        self.llm = make_llm()
-        self.pipeline = (
-            PromptTemplate(
-                input_variables=["schema", "question"],
-                template=SYSTEM_TMPL,
-            )
-            | self.llm
+        self.schema_json = get_schema()
+        self.schema_str = json.dumps(self.schema_json, indent=2)
+        whole_schema = self.schema_str.replace('{', '{{').replace('}', '}}')
+        self.llm        = make_llm()
+        self.session_id = str(uuid.uuid4())
+
+        # build prompt template with history placeholder
+        self.prompt = ChatPromptTemplate.from_messages([
+            ("system", SYSTEM_RULES + "\n### Schema\n" + whole_schema),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{user_input}")
+        ])
+
+        chain_core = self.prompt | self.llm
+
+        def get_history(session_id: str):
+            if session_id not in _HISTORY_STORE:
+                _HISTORY_STORE[session_id] = ChatMessageHistory()
+            return _HISTORY_STORE[session_id]
+
+        self.chain = RunnableWithMessageHistory(
+            chain_core,
+            get_history,
+            input_messages_key="user_input",
+            history_messages_key="history",
         )
 
-    def generate(self, question: str) -> str:
-        schema_slice = self.retriever(question)
-        if DEBUG:
-            print("[DEBUG] Schema slice:\n", schema_slice, file=sys.stderr)
-        msg = self.pipeline.invoke({"schema": schema_slice, "question": question})
-        return str(getattr(msg, "content", msg)).strip()
+    def respond(self, user_text: str) -> str:
+        result = self.chain.invoke(
+            {"user_input": user_text},
+            config={"configurable": {"session_id": self.session_id}}
+        )
+        return result.content.strip().strip("` ")
 
 if __name__ == "__main__":
     agent = Text2CypherAgent()
     try:
         while True:
-            q = input("Ask> ").strip()
-            if q:
-                print("\n" + agent.generate(q) + "\n")
+            txt = input("You> ").strip()
+            if not txt:
+                continue
+            print(agent.respond(txt) + "\n")
     except (KeyboardInterrupt, EOFError):
         print()
