@@ -8,8 +8,8 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from utils import get_env_variable
-from schema_loader import get_schema
+from src.utils import get_env_variable
+from src.schema_loader import get_schema
 
 
 load_dotenv()
