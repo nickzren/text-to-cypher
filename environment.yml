@@ -8,12 +8,10 @@ dependencies:
   - pip:
       # Core LLM + vector
       - langchain
+      - langchain-community
       - langchain-openai
-      - langchain-google-genai
       - langgraph
-      - faiss-cpu
       - openai
-      - google-genai
 
       # Neo4j live agent
       - neo4j
