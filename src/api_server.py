@@ -8,6 +8,8 @@ FastAPI service exposing:
 """
 
 import time
+from typing import Optional
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +22,9 @@ from src.utils import get_env_variable
 load_dotenv()
 OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
 client = OpenAI()
+
+# persistent thread for the remote assistant
+_REMOTE_THREAD_ID: Optional[str] = None
 
 # ── FastAPI app & CORS ───────────────────────────────────────────────
 app = FastAPI()
@@ -52,6 +57,28 @@ async def ask_local_agent(req: QueryRequest):
     except Exception as e:
         return {"error": str(e)}
 
+
+@app.get("/api/remote/history", tags=["remote-agent"])
+async def remote_history():
+    """Return conversation history for the remote assistant."""
+    if _REMOTE_THREAD_ID is None:
+        return {"history": []}
+
+    msgs = client.beta.threads.messages.list(thread_id=_REMOTE_THREAD_ID)
+    history = []
+    for m in reversed(msgs.data):  # chronological order
+        content = m.content[0].text.value.strip()
+        history.append({"role": m.role, "content": content})
+    return {"history": history}
+
+
+@app.post("/api/remote/clear", tags=["remote-agent"])
+async def clear_remote_history():
+    """Reset the remote assistant conversation."""
+    global _REMOTE_THREAD_ID
+    _REMOTE_THREAD_ID = None
+    return {"status": "cleared"}
+
 @app.get("/api/local/history", tags=["local-agent"])
 async def local_history():
     """Return conversation history for the local agent."""
@@ -68,23 +95,34 @@ async def clear_local_history():
 # --------------------------------------------------------------------
 @app.post("/api/remote/ask", tags=["remote-agent"])
 async def ask_remote_agent(req: QueryRequest):
+    """Send a question to the remote OpenAI Assistant (stateful)."""
+    global _REMOTE_THREAD_ID
     q = req.query.strip()
     if not q:
         return {"error": "Query cannot be empty."}
 
     try:
-        thread = client.beta.threads.create()
-        client.beta.threads.messages.create(thread_id=thread.id, role="user", content=q)
+        # initialise thread on first use
+        if _REMOTE_THREAD_ID is None:
+            thread = client.beta.threads.create()
+            _REMOTE_THREAD_ID = thread.id
+
+        client.beta.threads.messages.create(
+            thread_id=_REMOTE_THREAD_ID, role="user", content=q
+        )
 
         run = client.beta.threads.runs.create(
-            thread_id=thread.id, assistant_id=OPENAI_ASSISTANT_ID
+            thread_id=_REMOTE_THREAD_ID, assistant_id=OPENAI_ASSISTANT_ID
         )
 
         while run.status in ("queued", "in_progress"):
             time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            run = client.beta.threads.runs.retrieve(
+                thread_id=_REMOTE_THREAD_ID, run_id=run.id
+            )
 
-        msgs = client.beta.threads.messages.list(thread_id=thread.id)
+        msgs = client.beta.threads.messages.list(thread_id=_REMOTE_THREAD_ID)
+        # OpenAI returns most-recent first → last assistant reply is msgs.data[0]
         for m in msgs.data:
             if m.role == "assistant":
                 return {"answer": m.content[0].text.value.strip()}
