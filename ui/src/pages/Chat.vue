@@ -1,23 +1,35 @@
 <template>
-  <div class="w-full px-4 pt-10 flex justify-center">
-    <div class="w-full max-w-3xl flex flex-col gap-4">
+  <div class="w-full h-screen flex justify-center px-4 pt-10">
+    <div class="w-full max-w-3xl flex flex-col gap-4 h-full">
       <div class="text-center">
         <div class="flex justify-center items-center mb-4">
           <img src="../assets/logo.png" alt="Logo" class="h-38 w-auto" />
         </div>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <QueryForm
-          v-model="query"
-          :loading="loading"
-          @submit="askAgent"
-          @clear="clearHistory"
-          @update:useRemote="useRemote = $event"
-        />
+      <QueryForm
+        v-if="!inputAtBottom"
+        v-model="query"
+        :loading="loading"
+        @submit="askAgent"
+        @clear="clearHistory"
+        @update:useRemote="useRemote = $event"
+      />
 
-        <ChatHistory :messages="messages" />
-      </div>
+      <ChatHistory
+        :messages="messages"
+        class="flex-1"
+      />
+
+      <QueryForm
+        v-if="inputAtBottom"
+        v-model="query"
+        :loading="loading"
+        class="sticky bottom-0 bg-white pt-3"
+        @submit="askAgent"
+        @clear="clearHistory"
+        @update:useRemote="useRemote = $event"
+      />
     </div>
   </div>
 </template>
@@ -32,12 +44,14 @@ const query = ref('');
 const messages = ref([]);
 const loading = ref(false);
 const useRemote = ref(false);         // ← remote (Assistant) flag
+const inputAtBottom = ref(false);
 
 async function askAgent() {
   if (!query.value.trim()) return;
 
   const question = query.value;
   messages.value.push({ role: 'user', content: question });
+  inputAtBottom.value = true;
   query.value = '';
   loading.value = true;
 
@@ -65,13 +79,16 @@ async function loadHistory() {
   try {
     const res = await axios.get('/api/local/history');
     messages.value = res.data.history || [];
+    inputAtBottom.value = messages.value.length > 0;
   } catch {
     messages.value = [];
+    inputAtBottom.value = false;
   }
 }
 
 async function clearHistory() {
   messages.value = [];
+  inputAtBottom.value = false;
   if (!useRemote.value) {
     try {
       await axios.post('/api/local/clear');
