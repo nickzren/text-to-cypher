@@ -1,9 +1,5 @@
 # Text-to-Cypher UI
 
-<img src="src/assets/text-to-cypher-ui-overview.png" width="700" alt="Text to Cypher UI">
-
----
-
 ## 🛠 Tech Stack
 
 - **Vue 3**
@@ -35,6 +31,3 @@ Launch the backend API (FastAPI), back to root directory, run:
 ```bash
 uvicorn src.api_server:app --reload
 ```
-
-Both the local and remote agent modes now preserve chat history. Switching
-between them fetches the corresponding conversation from the backend.
