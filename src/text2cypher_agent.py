@@ -71,6 +71,21 @@ class Text2CypherAgent:
         )
         return result.content.strip().strip("` ")
 
+    def get_history(self) -> list[dict[str, str]]:
+        """Return chat history as list of {role, content} dicts."""
+        hist = _HISTORY_STORE.get(self.session_id)
+        if not hist:
+            return []
+        messages = []
+        for m in hist.messages:
+            role = "assistant" if getattr(m, "type", "") == "ai" else "user"
+            messages.append({"role": role, "content": m.content})
+        return messages
+
+    def clear_history(self) -> None:
+        """Erase stored chat history for this session."""
+        _HISTORY_STORE[self.session_id] = ChatMessageHistory()
+
 if __name__ == "__main__":
     agent = Text2CypherAgent()
     try:
