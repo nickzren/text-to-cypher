@@ -72,12 +72,9 @@ async function askAgent() {
 }
 
 async function loadHistory() {
-  if (useRemote.value) {
-    messages.value = [];
-    return;
-  }
+  const endpoint = useRemote.value ? '/api/remote/history' : '/api/local/history';
   try {
-    const res = await axios.get('/api/local/history');
+    const res = await axios.get(endpoint);
     messages.value = res.data.history || [];
     inputAtBottom.value = messages.value.length > 0;
   } catch {
@@ -89,11 +86,10 @@ async function loadHistory() {
 async function clearHistory() {
   messages.value = [];
   inputAtBottom.value = false;
-  if (!useRemote.value) {
-    try {
-      await axios.post('/api/local/clear');
-    } catch {}
-  }
+  const endpoint = useRemote.value ? '/api/remote/clear' : '/api/local/clear';
+  try {
+    await axios.post(endpoint);
+  } catch {}
 }
 
 onMounted(loadHistory);
