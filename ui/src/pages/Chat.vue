@@ -11,6 +11,7 @@
         v-if="!inputAtBottom"
         v-model="query"
         :loading="loading"
+        :useRemote="useRemote"
         @submit="askAgent"
         @clear="clearHistory"
         @update:useRemote="useRemote = $event"
@@ -25,6 +26,7 @@
         v-if="inputAtBottom"
         v-model="query"
         :loading="loading"
+        :useRemote="useRemote"
         class="sticky bottom-0 bg-white pt-3"
         @submit="askAgent"
         @clear="clearHistory"
@@ -43,7 +45,8 @@ import ChatHistory from '../components/ChatHistory.vue';
 const query = ref('');
 const messages = ref([]);
 const loading = ref(false);
-const useRemote = ref(false);         // ← remote (Assistant) flag
+// remember last‑chosen agent across page refreshes
+const useRemote = ref(localStorage.getItem('useRemote') === 'true');
 const inputAtBottom = ref(false);
 
 async function askAgent() {
@@ -94,6 +97,7 @@ async function clearHistory() {
 
 onMounted(loadHistory);
 watch(useRemote, loadHistory);
+watch(useRemote, (val) => localStorage.setItem('useRemote', val));
 </script>
 
 <style scoped>

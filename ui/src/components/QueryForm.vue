@@ -76,12 +76,15 @@ import Tooltip from 'primevue/tooltip';
 const props = defineProps({
   modelValue: String,
   loading: Boolean,
-});
+  useRemote: Boolean,   // sync selected agent from parent
+})
 const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote', 'clear']);
 
-const selectedApi = ref('local');     // default: local agent
 
-watch(selectedApi, (val) => emit('update:useRemote', val === 'remote'));
+const selectedApi = computed({
+  get: () => (props.useRemote ? 'remote' : 'local'),
+  set: (val) => emit('update:useRemote', val === 'remote'),
+})
 
 const localValue = computed({
   get: () => props.modelValue,
