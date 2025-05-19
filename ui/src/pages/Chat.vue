@@ -12,54 +12,75 @@
           v-model="query"
           :loading="loading"
           @submit="askAgent"
+          @clear="clearHistory"
           @update:useRemote="useRemote = $event"
         />
 
-        <transition name="fade">
-          <AnswerCard v-if="response" :response="response" />
-        </transition>
+        <ChatHistory :messages="messages" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import QueryForm from '../components/QueryForm.vue';
-import AnswerCard from '../components/AnswerCard.vue';
+import ChatHistory from '../components/ChatHistory.vue';
 
 const query = ref('');
-const response = ref('');
+const messages = ref([]);
 const loading = ref(false);
 const useRemote = ref(false);         // ← remote (Assistant) flag
 
 async function askAgent() {
   if (!query.value.trim()) return;
 
-  response.value = '';
+  const question = query.value;
+  messages.value.push({ role: 'user', content: question });
+  query.value = '';
   loading.value = true;
 
   const endpoint = useRemote.value ? '/api/remote/ask' : '/api/local/ask';
 
   try {
-    const res = await axios.post(endpoint, { query: query.value });
-    response.value = res.data.answer || 'No response received.';
+    const res = await axios.post(endpoint, { query: question });
+    const ans = res.data.answer || 'No response received.';
+    messages.value.push({ role: 'assistant', content: ans });
   } catch (err) {
-    response.value =
-      'Error: ' + (err.response?.data?.detail || err.message || 'Unknown error.');
+    messages.value.push({
+      role: 'assistant',
+      content: 'Error: ' + (err.response?.data?.detail || err.message || 'Unknown error.')
+    });
   } finally {
     loading.value = false;
   }
 }
 
-// Clear response when input cleared
-watch(query, (val) => {
-  if (!val.trim()) response.value = '';
-});
+async function loadHistory() {
+  if (useRemote.value) {
+    messages.value = [];
+    return;
+  }
+  try {
+    const res = await axios.get('/api/local/history');
+    messages.value = res.data.history || [];
+  } catch {
+    messages.value = [];
+  }
+}
 
-// Clear when switching local/remote
-watch(useRemote, () => (response.value = ''));
+async function clearHistory() {
+  messages.value = [];
+  if (!useRemote.value) {
+    try {
+      await axios.post('/api/local/clear');
+    } catch {}
+  }
+}
+
+onMounted(loadHistory);
+watch(useRemote, loadHistory);
 </script>
 
 <style scoped>

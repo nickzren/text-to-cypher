@@ -43,7 +43,14 @@
             class="w-full"
           />
         </div>
-        <div class="field text-right">
+        <div class="field text-right flex gap-2 justify-end">
+          <Button
+            type="button"
+            label="Clear"
+            icon="pi pi-trash"
+            severity="secondary"
+            @click="clear"
+          />
           <Button
             type="submit"
             label="Submit Query"
@@ -70,7 +77,7 @@ const props = defineProps({
   modelValue: String,
   loading: Boolean,
 });
-const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote']);
+const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote', 'clear']);
 
 const selectedApi = ref('local');     // default: local agent
 
@@ -83,6 +90,10 @@ const localValue = computed({
 
 function submitForm() {
   emit('submit');
+}
+
+function clear() {
+  emit('clear');
 }
 </script>
 

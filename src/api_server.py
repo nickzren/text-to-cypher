@@ -47,10 +47,21 @@ async def ask_local_agent(req: QueryRequest):
     if not q:
         return {"error": "Query cannot be empty."}
     try:
-        cypher = cypher_agent.generate(q)
+        cypher = cypher_agent.respond(q)
         return {"answer": cypher}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/local/history", tags=["local-agent"])
+async def local_history():
+    """Return conversation history for the local agent."""
+    return {"history": cypher_agent.get_history()}
+
+@app.post("/api/local/clear", tags=["local-agent"])
+async def clear_local_history():
+    """Clear the local agent chat history."""
+    cypher_agent.clear_history()
+    return {"status": "cleared"}
 
 # --------------------------------------------------------------------
 # REMOTE assistant endpoint
