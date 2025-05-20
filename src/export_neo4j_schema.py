@@ -5,14 +5,19 @@ import json
 from pathlib import Path
 from neo4j import GraphDatabase
 from utils import get_env_variable
+import sys
 
 def main():
     parser = argparse.ArgumentParser(description="Export Neo4j schema.")
     parser.add_argument("--output_dir", required=True, help="Path to store neo4j_schema.json")
     args = parser.parse_args()
 
-    uri      = get_env_variable("DB_URL")
-    db_name  = get_env_variable("DB_NAME")
+    try:
+        uri = get_env_variable("DB_URL")
+        db_name = get_env_variable("DB_NAME")
+    except EnvironmentError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
 
     # ---- auth (uncomment if needed) ----
     # user     = get_env_variable("DB_USER")
