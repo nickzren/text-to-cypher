@@ -7,6 +7,7 @@ A new web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cyp
 
 <img src="ui/src/assets/text-to-cypher-ui-overview.png" width="600" alt="Text to Cypher UI">
 
+The backend now exposes `/api/schema`, returning the loaded Neo4j schema as JSON. The UI shows this information in a side panel for quick reference.
 For more details and setup instructions, see the [UI README](ui/README.md).
 
 ---
