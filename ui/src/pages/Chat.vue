@@ -1,13 +1,18 @@
 <template>
-  <div class="w-full h-screen flex justify-center">
-    <div class="flex flex-col gap-4 h-full w-full max-w-3xl px-4 pt-10">
+  <!-- ⚙️ desktop split‑view, mobile overlay -->
+  <div class="h-screen flex overflow-hidden">
+    <!-- 🄰  chat column (flex‑1) -->
+    <section class="flex flex-col h-full flex-1 max-w-none px-4 pt-10 mx-auto">
+      <!-- header -->
       <div class="text-center">
         <div class="flex justify-center items-center mb-4">
           <img src="../assets/logo.png" alt="Logo" class="h-38 w-auto" />
         </div>
       </div>
 
+      <!-- top query form (desktop) -->
       <QueryForm
+        :style="{ marginInline: chatMargin + 'px' }"
         v-if="!inputAtBottom"
         v-model="query"
         :loading="loading"
@@ -17,41 +22,110 @@
         @update:useRemote="useRemote = $event"
       />
 
+      <!-- scrollable history -->
       <ChatHistory
         :messages="messages"
-        class="flex-1"
+        class="flex-1 overflow-y-auto"
+        :style="{ marginInline: chatMargin + 'px' }"
       />
 
+      <!-- bottom‑pinned query form -->
       <QueryForm
         v-if="inputAtBottom"
         v-model="query"
         :loading="loading"
         :useRemote="useRemote"
         class="sticky bottom-0 bg-white pt-3"
+        :style="{ marginInline: chatMargin + 'px' }"
         @submit="askAgent"
         @clear="clearHistory"
         @update:useRemote="useRemote = $event"
       />
-    </div>
-    <div class="w-1/3 border-l overflow-y-auto hidden sm:block">
-      <SchemaViewer class="h-full" />
-    </div>
+    </section>
+
+    <!-- 🄱  drag handle (desktop only) -->
+    <div
+      v-show="!isMobile"
+      class="w-2 cursor-col-resize bg-gray-200 hover:bg-gray-300"
+      @mousedown="startDrag"
+    ></div>
+
+    <!-- 🄲  schema pane -->
+    <aside
+      v-show="!isMobile || showSchema"
+      :style="{ width: schemaWidth + 'px' }"
+      class="border-l overflow-y-auto bg-white h-full z-10 fixed top-0 right-0 sm:static sm:block"
+    >
+      <SchemaViewer class="h-full p-4" />
+    </aside>
   </div>
+
+  <!-- Floating toggle for mobile -->
+  <button
+    v-if="isMobile"
+    @click="showSchema = true"
+    class="fixed bottom-4 right-4 p-3 rounded-full shadow bg-sky-600 text-white"
+  >
+    Schema
+  </button>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
 import QueryForm from '../components/QueryForm.vue';
 import ChatHistory from '../components/ChatHistory.vue';
 import SchemaViewer from '../components/SchemaViewer.vue';
 
+const windowWidth = ref(window.innerWidth);
+const CHAT_MIN_WIDTH = 320;   // px
+const MAX_MARGIN     = 200;   // px (mx-50)
+
+const schemaWidth = ref(350); // px
+const showSchema  = ref(false);
+const isMobile    = ref(window.innerWidth < 640);
+const SCHEMA_MIN_WIDTH = 240; // px
+
+function onResize() {
+  windowWidth.value = window.innerWidth;
+  isMobile.value = window.innerWidth < 640;
+  if (!isMobile.value) showSchema.value = false;
+}
+onMounted(() => {
+  window.addEventListener('resize', onResize, { passive: true });
+  onResize();
+});
+onUnmounted(() => window.removeEventListener('resize', onResize));
+
+function startDrag(e) {
+  const startX     = e.clientX;
+  const startWidth = schemaWidth.value;
+  const onMove = ev => {
+    schemaWidth.value = Math.max(SCHEMA_MIN_WIDTH, startWidth - (ev.clientX - startX));
+  };
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+const chatMargin = computed(() => {
+  const leftover = windowWidth.value - schemaWidth.value - CHAT_MIN_WIDTH;
+  const half     = leftover / 2;
+  if (half >= MAX_MARGIN) return MAX_MARGIN;
+  return Math.max(16, half); // keep at least 16 px
+});
+
 const query = ref('');
-const messages = ref([]);
+const messages = ref(/** @type {{role:string,content:string}[]} */([]));
 const loading = ref(false);
 // remember last‑chosen agent across page refreshes
 const useRemote = ref(localStorage.getItem('useRemote') === 'true');
 const inputAtBottom = ref(false);
+
+const apiBase = computed(() => (useRemote.value ? '/api/remote' : '/api/local'));
 
 async function askAgent() {
   if (!query.value.trim()) return;
@@ -62,7 +136,7 @@ async function askAgent() {
   query.value = '';
   loading.value = true;
 
-  const endpoint = useRemote.value ? '/api/remote/ask' : '/api/local/ask';
+  const endpoint = `${apiBase.value}/ask`;
 
   try {
     const res = await axios.post(endpoint, { query: question });
@@ -79,7 +153,7 @@ async function askAgent() {
 }
 
 async function loadHistory() {
-  const endpoint = useRemote.value ? '/api/remote/history' : '/api/local/history';
+  const endpoint = `${apiBase.value}/history`;
   try {
     const res = await axios.get(endpoint);
     messages.value = res.data.history || [];
@@ -93,15 +167,17 @@ async function loadHistory() {
 async function clearHistory() {
   messages.value = [];
   inputAtBottom.value = false;
-  const endpoint = useRemote.value ? '/api/remote/clear' : '/api/local/clear';
+  const endpoint = `${apiBase.value}/clear`;
   try {
     await axios.post(endpoint);
   } catch {}
 }
 
 onMounted(loadHistory);
-watch(useRemote, loadHistory);
-watch(useRemote, (val) => localStorage.setItem('useRemote', val));
+watch(useRemote, val => {
+  localStorage.setItem('useRemote', val);
+  loadHistory();
+});
 </script>
 
 <style scoped>
@@ -112,5 +188,20 @@ watch(useRemote, (val) => localStorage.setItem('useRemote', val));
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+section,
+aside {
+  min-height: 0; /* let the grid cells shrink properly */
+}
+
+/* ensure the drag handle stretches full height */
+.cursor-col-resize {
+  min-height: 100%;
+}
+
+/* hide body scrollbars when mobile overlay is open */
+body.overlay-open {
+  overflow: hidden;
 }
 </style>
