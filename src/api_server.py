@@ -8,6 +8,8 @@ FastAPI service exposing:
 """
 
 import time
+import asyncio
+from functools import partial
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -102,26 +104,46 @@ async def ask_remote_agent(req: QueryRequest):
         return {"error": "Query cannot be empty."}
 
     try:
+        loop = asyncio.get_running_loop()
         # initialise thread on first use
         if _REMOTE_THREAD_ID is None:
-            thread = client.beta.threads.create()
+            thread = await loop.run_in_executor(None, client.beta.threads.create)
             _REMOTE_THREAD_ID = thread.id
 
-        client.beta.threads.messages.create(
-            thread_id=_REMOTE_THREAD_ID, role="user", content=q
+        await loop.run_in_executor(
+            None,
+            partial(
+                client.beta.threads.messages.create,
+                thread_id=_REMOTE_THREAD_ID,
+                role="user",
+                content=q,
+            ),
         )
 
-        run = client.beta.threads.runs.create(
-            thread_id=_REMOTE_THREAD_ID, assistant_id=OPENAI_ASSISTANT_ID
+        run = await loop.run_in_executor(
+            None,
+            partial(
+                client.beta.threads.runs.create,
+                thread_id=_REMOTE_THREAD_ID,
+                assistant_id=OPENAI_ASSISTANT_ID,
+            ),
         )
 
         while run.status in ("queued", "in_progress"):
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(
-                thread_id=_REMOTE_THREAD_ID, run_id=run.id
+            await asyncio.sleep(1)
+            run = await loop.run_in_executor(
+                None,
+                partial(
+                    client.beta.threads.runs.retrieve,
+                    thread_id=_REMOTE_THREAD_ID,
+                    run_id=run.id,
+                ),
             )
 
-        msgs = client.beta.threads.messages.list(thread_id=_REMOTE_THREAD_ID)
+        msgs = await loop.run_in_executor(
+            None,
+            partial(client.beta.threads.messages.list, thread_id=_REMOTE_THREAD_ID),
+        )
         # OpenAI returns most-recent first → last assistant reply is msgs.data[0]
         for m in msgs.data:
             if m.role == "assistant":
