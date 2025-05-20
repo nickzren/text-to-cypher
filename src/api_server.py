@@ -9,14 +9,17 @@ FastAPI service exposing:
 
 import time
 import asyncio
+import os
+import json
 from functools import partial
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
+from neo4j import GraphDatabase
 
 from src.text2cypher_agent import Text2CypherAgent
 from src.utils import get_env_variable
@@ -25,6 +28,19 @@ from src.schema_loader import get_schema
 load_dotenv()
 OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
 client = OpenAI()
+
+# ── Neo4j driver for running queries ──────────────────────────────────
+_DB_URI = get_env_variable("DB_URL")
+_DB_NAME = get_env_variable("DB_NAME")
+_DB_USER = os.getenv("DB_USER")
+_DB_PASSWORD = os.getenv("DB_PASSWORD")
+_neo4j_driver = GraphDatabase.driver(
+    _DB_URI,
+    auth=(_DB_USER, _DB_PASSWORD) if _DB_USER else None,
+)
+
+# in-memory store for query results so they appear in history
+_RUN_HISTORY: List[Dict[str, Any]] = []
 
 # persistent thread for the remote assistant
 _REMOTE_THREAD_ID: Optional[str] = None
@@ -69,17 +85,38 @@ async def ask_local_agent(req: QueryRequest):
         return {"error": str(e)}
 
 
+# --------------------------------------------------------------------
+# Run Cypher query
+# --------------------------------------------------------------------
+@app.post("/api/run", tags=["run"])
+async def run_query(req: QueryRequest):
+    """Execute the given Cypher query against Neo4j."""
+    q = req.query.strip()
+    if not q:
+        return {"error": "Query cannot be empty."}
+    try:
+        with _neo4j_driver.session(database=_DB_NAME) as session:
+            records = [dict(r) for r in session.run(q)]
+        _RUN_HISTORY.append({"role": "result", "content": json.dumps(records)})
+        return {"records": records}
+    except Exception as e:
+        msg = str(e)
+        _RUN_HISTORY.append({"role": "result", "content": f"Error: {msg}"})
+        return {"error": msg}
+
+
 @app.get("/api/remote/history", tags=["remote-agent"])
 async def remote_history():
     """Return conversation history for the remote assistant."""
     if _REMOTE_THREAD_ID is None:
-        return {"history": []}
+        return {"history": _RUN_HISTORY}
 
     msgs = client.beta.threads.messages.list(thread_id=_REMOTE_THREAD_ID)
     history = []
     for m in reversed(msgs.data):  # chronological order
         content = m.content[0].text.value.strip()
         history.append({"role": m.role, "content": content})
+    history.extend(_RUN_HISTORY)
     return {"history": history}
 
 
@@ -88,17 +125,19 @@ async def clear_remote_history():
     """Reset the remote assistant conversation."""
     global _REMOTE_THREAD_ID
     _REMOTE_THREAD_ID = None
+    _RUN_HISTORY.clear()
     return {"status": "cleared"}
 
 @app.get("/api/local/history", tags=["local-agent"])
 async def local_history():
     """Return conversation history for the local agent."""
-    return {"history": cypher_agent.get_history()}
+    return {"history": cypher_agent.get_history() + _RUN_HISTORY}
 
 @app.post("/api/local/clear", tags=["local-agent"])
 async def clear_local_history():
     """Clear the local agent chat history."""
     cypher_agent.clear_history()
+    _RUN_HISTORY.clear()
     return {"status": "cleared"}
 
 # --------------------------------------------------------------------

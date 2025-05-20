@@ -26,7 +26,7 @@
       </div>
 
       <!-- ASSISTANT MESSAGE -->
-      <div v-else class="flex flex-col items-start gap-1 pl-2">
+      <div v-else-if="msg.role === 'assistant'" class="flex flex-col items-start gap-1 pl-2">
         <span class="text-xs font-semibold text-gray-500">text2cypher</span>
 
         <!-- inline assistant card -->
@@ -40,11 +40,28 @@
             <i class="pi pi-copy"></i>
           </button>
 
+          <!-- run query button -->
+          <button
+            class="!p-2 absolute top-2 right-12 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white shadow-md rounded"
+            v-tooltip="'Run Query'"
+            @click="emitRun(stripFences(msg.content))"
+          >
+            <i class="pi pi-play"></i>
+          </button>
+
           <!-- cypher body -->
           <pre
-            class="bg-transparent text-gray-800 text-sm p-4 pr-12 overflow-x-auto font-mono whitespace-pre-wrap leading-snug"
+            class="bg-transparent text-gray-800 text-sm p-4 pr-20 overflow-x-auto font-mono whitespace-pre-wrap leading-snug"
           ><code>{{ stripFences(msg.content) }}</code></pre>
         </div>
+      </div>
+
+      <!-- QUERY RESULT MESSAGE -->
+      <div v-else class="flex flex-col items-start gap-1 pl-2">
+        <span class="text-xs font-semibold text-gray-500">result</span>
+        <pre class="bg-gray-50 p-4 rounded text-xs whitespace-pre-wrap font-mono shadow">
+{{ msg.content }}
+        </pre>
       </div>
     </template>
   </div>
@@ -54,6 +71,7 @@
 import { nextTick, ref, watch, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 
+const emit = defineEmits(['run-query'])
 const props = defineProps({ messages: Array })
 const container = ref(null)
 const isAtBottom = ref(true)
@@ -73,6 +91,10 @@ function scrollToBottom() {
 
 function stripFences(text = '') {
   return text.replace(/^```(?:cypher)?/i, '').replace(/```$/, '').trim()
+}
+
+function emitRun(cypher) {
+  emit('run-query', cypher)
 }
 
 async function copyToClipboard(text) {

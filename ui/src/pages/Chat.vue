@@ -27,6 +27,7 @@
         :messages="messages"
         class="flex-1 overflow-y-auto"
         :style="{ marginInline: chatMargin + 'px' }"
+        @run-query="runQuery"
       />
 
       <!-- bottom‑pinned query form -->
@@ -126,6 +127,23 @@ const useRemote = ref(localStorage.getItem('useRemote') === 'true');
 const inputAtBottom = ref(false);
 
 const apiBase = computed(() => (useRemote.value ? '/api/remote' : '/api/local'));
+
+async function runQuery(cypher) {
+  if (!cypher.trim()) return;
+  try {
+    const res = await axios.post('/api/run', { query: cypher });
+    if (res.data.records) {
+      messages.value.push({ role: 'result', content: JSON.stringify(res.data.records, null, 2) });
+    } else if (res.data.error) {
+      messages.value.push({ role: 'result', content: 'Error: ' + res.data.error });
+    }
+  } catch (err) {
+    messages.value.push({
+      role: 'result',
+      content: 'Error: ' + (err.response?.data?.detail || err.message || 'Unknown error.')
+    });
+  }
+}
 
 async function askAgent() {
   if (!query.value.trim()) return;
