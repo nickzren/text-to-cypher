@@ -20,6 +20,7 @@ from openai import OpenAI
 
 from src.text2cypher_agent import Text2CypherAgent
 from src.utils import get_env_variable
+from src.schema_loader import get_schema
 
 load_dotenv()
 OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
@@ -44,6 +45,14 @@ cypher_agent = Text2CypherAgent()
 # ── request model ────────────────────────────────────────────────────
 class QueryRequest(BaseModel):
     query: str
+
+# --------------------------------------------------------------------
+# Schema endpoint
+# --------------------------------------------------------------------
+@app.get("/api/schema", tags=["schema"])
+async def fetch_schema():
+    """Return the cached Neo4j schema JSON."""
+    return get_schema()
 
 # --------------------------------------------------------------------
 # LOCAL agent endpoint

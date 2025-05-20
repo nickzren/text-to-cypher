@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full h-screen flex justify-center px-4 pt-10">
-    <div class="w-full max-w-3xl flex flex-col gap-4 h-full">
+  <div class="w-full h-screen flex justify-center">
+    <div class="flex flex-col gap-4 h-full w-full max-w-3xl px-4 pt-10">
       <div class="text-center">
         <div class="flex justify-center items-center mb-4">
           <img src="../assets/logo.png" alt="Logo" class="h-38 w-auto" />
@@ -33,6 +33,9 @@
         @update:useRemote="useRemote = $event"
       />
     </div>
+    <div class="w-1/3 border-l overflow-y-auto hidden sm:block">
+      <SchemaViewer class="h-full" />
+    </div>
   </div>
 </template>
 
@@ -41,6 +44,7 @@ import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 import QueryForm from '../components/QueryForm.vue';
 import ChatHistory from '../components/ChatHistory.vue';
+import SchemaViewer from '../components/SchemaViewer.vue';
 
 const query = ref('');
 const messages = ref([]);
