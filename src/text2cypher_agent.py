@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import uuid
+import sys
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -87,7 +88,12 @@ class Text2CypherAgent:
         _HISTORY_STORE[self.session_id] = ChatMessageHistory()
 
 if __name__ == "__main__":
-    agent = Text2CypherAgent()
+    try:
+        agent = Text2CypherAgent()
+    except EnvironmentError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     try:
         while True:
             txt = input("You> ").strip()
