@@ -2,7 +2,7 @@
   <!-- ⚙️ desktop split‑view, mobile overlay -->
   <div class="h-screen flex overflow-hidden">
     <!-- 🄰  chat column (flex‑1) -->
-    <section class="flex flex-col h-full flex-1 max-w-none px-4 pt-10 mx-auto">
+    <section class="flex flex-col h-full flex-1 max-w-none px-4 pt-10 mx-auto gap-4">
       <!-- header -->
       <div class="text-center">
         <div class="flex justify-center items-center mb-4">
@@ -13,7 +13,7 @@
       <!-- top query form (desktop) -->
       <QueryForm
         :style="{ marginInline: chatMargin + 'px' }"
-        v-if="!inputAtBottom"
+        :class="inputAtBottom ? 'sticky bottom-0 bg-white pt-1 order-2' : 'order-0'"
         v-model="query"
         :loading="loading"
         :useRemote="useRemote"
@@ -25,23 +25,11 @@
       <!-- scrollable history -->
       <ChatHistory
         :messages="messages"
-        class="flex-1 overflow-y-auto"
+        class="flex-1 overflow-y-auto order-1"
         :style="{ marginInline: chatMargin + 'px' }"
         @run-query="runQuery"
       />
 
-      <!-- bottom‑pinned query form -->
-      <QueryForm
-        v-if="inputAtBottom"
-        v-model="query"
-        :loading="loading"
-        :useRemote="useRemote"
-        class="sticky bottom-0 bg-white pt-3"
-        :style="{ marginInline: chatMargin + 'px' }"
-        @submit="askAgent"
-        @clear="clearHistory"
-        @update:useRemote="useRemote = $event"
-      />
     </section>
 
     <!-- 🄱  drag handle (desktop only) -->
