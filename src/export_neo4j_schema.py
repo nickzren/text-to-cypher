@@ -1,11 +1,10 @@
-# src/dump_schema.py
-import os
 import argparse
 import json
 from pathlib import Path
 from neo4j import GraphDatabase
 from utils import get_env_variable
 import sys
+
 
 def main():
     parser = argparse.ArgumentParser(description="Export Neo4j schema.")
@@ -37,55 +36,78 @@ def main():
     out_path.write_text(json.dumps(schema, indent=2))
     print(f"Schema dumped → {out_path}")
 
-# ----------------------------------------------------------------------
+
 def get_node_schema(session):
-    q = """
+    """
+    Return a dict[label -> {property -> type}] that includes *all* labels,
+    even when no nodes for that label currently store properties.
+    """
+    # 1) gather property definitions
+    q_props = """
     CALL db.schema.nodeTypeProperties()
     YIELD nodeType, propertyName, propertyTypes
     RETURN nodeType, propertyName, propertyTypes
     """
-    schema = {}
-    for rec in session.run(q):
+    schema: dict[str, dict[str, str]] = {}
+    for rec in session.run(q_props):
         label = rec["nodeType"].strip(":`")
         prop  = rec["propertyName"]
-        types = ", ".join(rec["propertyTypes"]) or "Unknown"
+        types_list = rec["propertyTypes"] or []
+        types = ", ".join(types_list) if types_list else "Unknown"
         schema.setdefault(label, {})[prop] = types
+
+    # 2) make sure labels with *no* properties are still represented
+    q_labels = "CALL db.labels() YIELD label RETURN label"
+    for rec in session.run(q_labels):
+        label = rec["label"]
+        schema.setdefault(label, {})  # leave value dict empty
+
     return schema
 
-# ----------------------------------------------------------------------
+
 def get_relationship_schema(session):
     """
-    For each relType: collect property definitions + a sampled (srcLabel, tgtLabel).
+    For each relationship type return its property map and a sampled endpoint
+    pair.  Includes relationship types that have zero properties.
     """
-    # 1) property map
+    rel_schema: dict[str, dict[str, str]] = {}
+
+    # 1) property definitions (may return zero rows for prop‑less rel‑types)
     q_props = """
     CALL db.schema.relTypeProperties()
     YIELD relType, propertyName, propertyTypes
     RETURN relType, propertyName, propertyTypes
     """
-    rel_schema = {}
     for rec in session.run(q_props):
         rtype = rec["relType"].strip(":`")
         prop  = rec["propertyName"]
+        rel_schema.setdefault(rtype, {})          # ensure the key exists
         if prop:
-            types = ", ".join(rec["propertyTypes"]) or "Unknown"
-            rel_schema.setdefault(rtype, {})[prop] = types
+            types_list = rec["propertyTypes"] or []
+            types = ", ".join(types_list) if types_list else "Unknown"
+            rel_schema[rtype][prop] = types
 
-    # 2) sample endpoints for each relationship type
+    # 2) add rel‑types that have *no* properties at all
+    q_all = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+    for rec in session.run(q_all):
+        rtype = rec["relationshipType"]
+        rel_schema.setdefault(rtype, {})
+
+    # 3) sample endpoints for every relationship type
     for rtype in rel_schema:
-        q_sample = f"""
+        q_sample = f'''
         MATCH (s)-[r:`{rtype}`]->(t)
-        WITH labels(s)[0] AS src, labels(t)[0] AS tgt
+        WITH head(labels(s)) AS src, head(labels(t)) AS tgt
         RETURN src, tgt LIMIT 1
-        """
+        '''
         rec = session.run(q_sample).single()
         if rec:
             rel_schema[rtype]["_endpoints"] = [rec["src"], rec["tgt"]]
-        else:  # no relationship instance found
+        else:
             rel_schema[rtype]["_endpoints"] = ["Unknown", "Unknown"]
 
     return rel_schema
 
-# ----------------------------------------------------------------------
+
 if __name__ == "__main__":
     main()
