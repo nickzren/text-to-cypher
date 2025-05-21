@@ -8,7 +8,7 @@
       <!-- USER MESSAGE -->
       <div
         v-if="msg.role === 'user'"
-        class="flex flex-col items-start gap-1 pl-2"
+        class="flex flex-col items-start gap-1"
       >
         <span class="text-base font-semibold text-gray-500">User</span>
         <MessageBubble
@@ -20,7 +20,7 @@
       <!-- ASSISTANT (text2cypher) MESSAGE -->
       <div
         v-else-if="msg.role === 'assistant'"
-        class="flex flex-col items-start gap-1 pl-2"
+        class="flex flex-col items-start gap-1"
       >
         <span class="text-base font-semibold text-gray-500">text2cypher</span>
         <MessageBubble
@@ -32,7 +32,7 @@
       </div>
 
       <!-- RESULT MESSAGE (API JSON or error) -->
-      <div v-else class="flex flex-col items-start gap-1 pl-2">
+      <div v-else class="flex flex-col items-start gap-1">
         <span class="text-xs font-semibold text-gray-500">result</span>
         <pre
           class="bg-gray-50 p-4 rounded text-xs whitespace-pre font-mono shadow"
