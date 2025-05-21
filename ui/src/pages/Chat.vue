@@ -100,12 +100,12 @@ const windowWidth = ref(window.innerWidth);
 const CHAT_MIN_WIDTH = 320;   // px
 const MAX_MARGIN     = 200;   // px (mx-50)
 
-const schemaWidth   = ref(350); // px
+const schemaWidth   = ref(450); // px
 const showSidebar   = ref(false);    // mobile overlay
 const sidebarVisible = ref(true);    // desktop visibility
 const sidebarTab     = ref('schema');
 const isMobile    = ref(window.innerWidth < 640);
-const SCHEMA_MIN_WIDTH = 240; // px
+const SCHEMA_MIN_WIDTH = 200; // px
 
 function onResize() {
   windowWidth.value = window.innerWidth;
