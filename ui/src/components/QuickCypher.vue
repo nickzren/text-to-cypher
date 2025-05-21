@@ -1,12 +1,19 @@
 <template>
-  <div class="p-4 text-sm overflow-y-auto h-full flex flex-col gap-4">
+  <div class="p-4 text-sm overflow-y-auto h-full flex flex-col">
     <h1 class="text-lg font-semibold">Quick Cypher</h1>
-    <div v-for="(cypher, idx) in scripts" :key="idx" class="flex flex-col items-start gap-1">
+    <div
+      v-for="(item, idx) in scripts"
+      :key="idx"
+      class="flex flex-col items-start gap-2 mt-6 first:mt-0"
+    >
+      <span class="text-sm font-semibold text-gray-700">
+        {{ item.desc }}
+      </span>
       <MessageBubble
-        :text="cypher"
+        :text="item.query"
         :showRun="true"
-        @run="emit('run-query', cypher)"
-        @copy="copyToClipboard(cypher)"
+        @run="emit('run-query', item.query)"
+        @copy="copyToClipboard(item.query)"
       />
     </div>
   </div>
@@ -28,9 +35,17 @@ function copyToClipboard(text) {
 }
 
 const scripts = [
-  'CALL db.schema.visualization',
-  'SHOW CONSTRAINTS',
-  'SHOW INDEXES',
-  'MATCH (n) RETURN n LIMIT 25'
+  {
+    query: 'CALL db.schema.visualization',
+    desc: 'Visualize the database schema'
+  },
+  {
+    query: 'MATCH (n) RETURN labels(n)[0], count(*)',
+    desc: 'Count nodes by label'
+  },
+  {
+    query: 'MATCH ()-[r]->() RETURN type(r), count(*)',
+    desc: 'Count relationships by type'
+  }
 ]
 </script>
