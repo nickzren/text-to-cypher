@@ -27,6 +27,7 @@
         :messages="messages"
         class="flex-1 overflow-y-auto"
         :style="{ marginInline: chatMargin + 'px' }"
+        @run-query="runQuery"
       />
 
       <!-- bottom‑pinned query form -->
@@ -126,6 +127,20 @@ const useRemote = ref(localStorage.getItem('useRemote') === 'true');
 const inputAtBottom = ref(false);
 
 const apiBase = computed(() => (useRemote.value ? '/api/remote' : '/api/local'));
+
+function runQuery(cypher) {
+  if (!cypher.trim()) return;
+
+  // Vite exposes env vars prefixed with VITE_
+  const base = import.meta.env.VITE_BROWSER_URL;
+  if (!base) {
+    console.error('VITE_BROWSER_URL is not defined');
+    return;
+  }
+
+  const url = `${base.replace(/\/$/, '')}/browser?cmd=edit&arg=${encodeURIComponent(cypher)}`;
+  window.open(url, '_blank');
+}
 
 async function askAgent() {
   if (!query.value.trim()) return;
