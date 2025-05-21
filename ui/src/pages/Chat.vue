@@ -34,28 +34,57 @@
 
     <!-- 🄱  drag handle (desktop only) -->
     <div
-      v-show="!isMobile"
+      v-show="!isMobile && sidebarVisible"
       class="w-2 cursor-col-resize bg-gray-200 hover:bg-gray-300"
       @mousedown="startDrag"
     ></div>
 
-    <!-- 🄲  schema pane -->
+    <!-- 🄲  side panel (schema / quick cypher) -->
     <aside
-      v-show="!isMobile || showSchema"
+      v-show="sidebarVisible && (!isMobile || showSidebar)"
       :style="{ width: schemaWidth + 'px' }"
       class="border-l overflow-y-auto bg-white h-full z-10 fixed top-0 right-0 sm:static sm:block"
     >
-      <SchemaViewer class="h-full p-4" />
+      <div class="border-b p-2 flex gap-2 items-center">
+        <button
+          class="text-sm px-2"
+          :class="{ 'font-bold underline': sidebarTab === 'schema' }"
+          @click="sidebarTab = 'schema'"
+        >Schema</button>
+        <button
+          class="text-sm px-2"
+          :class="{ 'font-bold underline': sidebarTab === 'cypher' }"
+          @click="sidebarTab = 'cypher'"
+        >Cypher</button>
+        <button class="ml-auto text-xl px-2" @click="hideSidebar" title="Close">&times;</button>
+      </div>
+      <component
+        :is="sidebarTab === 'schema' ? SchemaViewer : QuickCypher"
+        class="h-full"
+        @run-query="runQuery"
+      />
     </aside>
   </div>
 
-  <!-- Floating toggle for mobile -->
+  <!-- Floating toggles for mobile when panel hidden -->
+  <div v-if="isMobile && !showSidebar" class="fixed bottom-4 right-4 flex flex-col gap-2">
+    <button
+      @click="openSidebar('schema')"
+      class="p-3 rounded-full shadow bg-sky-600 text-white"
+    >Schema</button>
+    <button
+      @click="openSidebar('cypher')"
+      class="p-3 rounded-full shadow bg-sky-600 text-white"
+    >Cypher</button>
+  </div>
+
+  <!-- desktop show button when hidden -->
   <button
-    v-if="isMobile"
-    @click="showSchema = true"
-    class="fixed bottom-4 right-4 p-3 rounded-full shadow bg-sky-600 text-white"
+    v-if="!isMobile && !sidebarVisible"
+    @click="sidebarVisible = true"
+    class="fixed top-1/2 right-0 p-2 rounded-l shadow bg-sky-600 text-white"
   >
-    Schema
+    &lt;
   </button>
 </template>
 
@@ -65,20 +94,28 @@ import axios from 'axios';
 import QueryForm from '../components/QueryForm.vue';
 import ChatHistory from '../components/ChatHistory.vue';
 import SchemaViewer from '../components/SchemaViewer.vue';
+import QuickCypher from '../components/QuickCypher.vue';
 
 const windowWidth = ref(window.innerWidth);
 const CHAT_MIN_WIDTH = 320;   // px
 const MAX_MARGIN     = 200;   // px (mx-50)
 
-const schemaWidth = ref(350); // px
-const showSchema  = ref(false);
+const schemaWidth   = ref(350); // px
+const showSidebar   = ref(false);    // mobile overlay
+const sidebarVisible = ref(true);    // desktop visibility
+const sidebarTab     = ref('schema');
 const isMobile    = ref(window.innerWidth < 640);
 const SCHEMA_MIN_WIDTH = 240; // px
 
 function onResize() {
   windowWidth.value = window.innerWidth;
   isMobile.value = window.innerWidth < 640;
-  if (!isMobile.value) showSchema.value = false;
+  if (isMobile.value) {
+    showSidebar.value = false;
+    sidebarVisible.value = false;
+  } else if (!sidebarVisible.value) {
+    sidebarVisible.value = true;
+  }
 }
 onMounted(() => {
   window.addEventListener('resize', onResize, { passive: true });
@@ -101,7 +138,8 @@ function startDrag(e) {
 }
 
 const chatMargin = computed(() => {
-  const leftover = windowWidth.value - schemaWidth.value - CHAT_MIN_WIDTH;
+  const sidebarWidth = sidebarVisible.value ? schemaWidth.value : 0;
+  const leftover = windowWidth.value - sidebarWidth - CHAT_MIN_WIDTH;
   const half     = leftover / 2;
   if (half >= MAX_MARGIN) return MAX_MARGIN;
   return Math.max(16, half); // keep at least 16 px
@@ -128,6 +166,23 @@ function runQuery(cypher) {
 
   const url = `${base.replace(/\/$/, '')}/browser?cmd=edit&arg=${encodeURIComponent(cypher)}`;
   window.open(url, '_blank');
+}
+
+function openSidebar(tab) {
+  sidebarTab.value = tab;
+  if (isMobile.value) {
+    showSidebar.value = true;
+  } else {
+    sidebarVisible.value = true;
+  }
+}
+
+function hideSidebar() {
+  if (isMobile.value) {
+    showSidebar.value = false;
+  } else {
+    sidebarVisible.value = false;
+  }
 }
 
 async function askAgent() {
