@@ -95,7 +95,10 @@ async def remote_history(session_id: Optional[str] = None):
     if thread_id is None:
         return {"history": []}
 
-    msgs = client.beta.threads.messages.list(thread_id=thread_id)
+    loop = asyncio.get_running_loop()
+    msgs = await loop.run_in_executor(
+        None, partial(client.beta.threads.messages.list, thread_id=thread_id)
+    )
     history = []
     for m in reversed(msgs.data):  # chronological order
         content = m.content[0].text.value.strip()
