@@ -34,3 +34,7 @@ uvicorn src.api_server:app --reload
 
 The backend exposes `/api/schema`, which the UI fetches to display a "Schema Viewer" panel listing all node labels and relationship types.
 
+Each browser session is identified by a random ID stored in `localStorage`. This
+ID is sent with API requests so that chat history is kept separate for each user
+without any account system.
+

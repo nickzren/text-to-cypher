@@ -151,6 +151,13 @@ const loading = ref(false);
 // remember last‑chosen agent across page refreshes
 const useRemote = ref(localStorage.getItem('useRemote') === 'true');
 const inputAtBottom = ref(false);
+const sessionIdKey = 'sessionId';
+let sid = localStorage.getItem(sessionIdKey);
+if (!sid) {
+  sid = crypto.randomUUID();
+  localStorage.setItem(sessionIdKey, sid);
+}
+const sessionId = sid;
 
 const apiBase = computed(() => (useRemote.value ? '/api/remote' : '/api/local'));
 
@@ -197,7 +204,7 @@ async function askAgent() {
   const endpoint = `${apiBase.value}/ask`;
 
   try {
-    const res = await axios.post(endpoint, { query: question });
+    const res = await axios.post(endpoint, { query: question, session_id: sessionId });
     const ans = res.data.answer || 'No response received.';
     messages.value.push({ role: 'assistant', content: ans });
   } catch (err) {
@@ -211,7 +218,7 @@ async function askAgent() {
 }
 
 async function loadHistory() {
-  const endpoint = `${apiBase.value}/history`;
+  const endpoint = `${apiBase.value}/history?session_id=${sessionId}`;
   try {
     const res = await axios.get(endpoint);
     messages.value = res.data.history || [];
@@ -227,7 +234,7 @@ async function clearHistory() {
   inputAtBottom.value = false;
   const endpoint = `${apiBase.value}/clear`;
   try {
-    await axios.post(endpoint);
+    await axios.post(endpoint, { session_id: sessionId });
   } catch {}
 }
 
