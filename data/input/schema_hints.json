@@ -1,0 +1,28 @@
+{
+  "relationships": {
+    "TREATS_CtD": "Compound treats Disease",
+    "BINDS_CbG": "Compound binds to Gene", 
+    "ASSOCIATES_DaG": "Disease associates with Gene",
+    "CAUSES_CcSE": "Compound causes SideEffect",
+    "EXPRESSES_AeG": "Anatomy expresses Gene",
+    "UPREGULATES_DuG": "Disease upregulates Gene",
+    "DOWNREGULATES_DdG": "Disease downregulates Gene",
+    "PARTICIPATES_GpBP": "Gene participates in BiologicalProcess",
+    "PARTICIPATES_GpMF": "Gene participates in MolecularFunction",
+    "PARTICIPATES_GpCC": "Gene participates in CellularComponent",
+    "PARTICIPATES_GpPW": "Gene participates in Pathway",
+    "PRESENTS_DpS": "Disease presents Symptom",
+    "LOCALIZES_DlA": "Disease localizes to Anatomy",
+    "INTERACTS_GiG": "Gene interacts with Gene",
+    "RESEMBLES_CrC": "Compound resembles Compound",
+    "RESEMBLES_DrD": "Disease resembles Disease",
+    "PALLIATES_CpD": "Compound palliates Disease",
+    "INCLUDES_PCiC": "PharmacologicClass includes Compound",
+    "COVARIES_GcG": "Gene covaries with Gene",
+    "REGULATES_GrG": "Gene regulates Gene",
+    "UPREGULATES_CuG": "Compound upregulates Gene",
+    "DOWNREGULATES_CdG": "Compound downregulates Gene",
+    "UPREGULATES_AuG": "Anatomy upregulates Gene",
+    "DOWNREGULATES_AdG": "Anatomy downregulates Gene"
+  }
+}
