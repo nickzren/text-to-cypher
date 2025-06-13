@@ -10,7 +10,7 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.utils import get_env_variable
-from src.schema_loader import get_schema
+from src.schema_loader import get_schema, get_schema_hints
 
 
 load_dotenv()
@@ -40,13 +40,22 @@ class Text2CypherAgent:
     def __init__(self):
         self.schema_json = get_schema()
         self.schema_str = json.dumps(self.schema_json, indent=2)
+        self.hints = get_schema_hints()
+        
+        # Build system prompt with schema and optional hints
         whole_schema = self.schema_str.replace('{', '{{').replace('}', '}}')
+        system_prompt = SYSTEM_RULES + "\n### Schema\n" + whole_schema
+        
+        if self.hints:
+            hints_str = json.dumps(self.hints, indent=2).replace('{', '{{').replace('}', '}}')
+            system_prompt += "\n\n### Schema Hints\n" + hints_str
+
         self.llm        = make_llm()
         self.session_id = str(uuid.uuid4())
 
         # build prompt template with history placeholder
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", SYSTEM_RULES + "\n### Schema\n" + whole_schema),
+            ("system", system_prompt),
             MessagesPlaceholder(variable_name="history"),
             ("human", "{user_input}")
         ])
