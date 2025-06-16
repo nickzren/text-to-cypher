@@ -1,18 +1,43 @@
-# Ignore Python bytecode and cache directories
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.db
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-.DS_Store
+# Environment
+.env
+.env.local
 
-# Ignore VS Code settings
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Ignore FastAPI logs or temp files
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 logs/
 *.log
-data/input/neo4j_schema.faiss
-data/input/neo4j_schema.rows.npy
+
+uv.lock

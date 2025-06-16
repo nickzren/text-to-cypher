@@ -24,6 +24,7 @@ npm install
 
 Start the frontend development server, from the `ui` directory, run:
 ```bash
+cd ui/
 npm run dev
 ```
 
