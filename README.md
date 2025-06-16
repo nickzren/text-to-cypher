@@ -32,28 +32,20 @@ The following instructions are for setting up and running the lightweight AI age
    ```sh
    pip install uv
    cd text-to-cypher
-   uv venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    uv sync
    ```
 3. Update the `.env` file to set `OPENAI_API_KEY`.
 
 ### Run
 
-1. Activate environment:
-   ```sh
-   cd text-to-cypher
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-2. Run example scripts:
-   ```sh
-   python src/text2cypher_agent.py 
-   Ask> Show compounds that treat both type 2 diabetes mellitus and hypertension.
+```sh
+uv run python -m src.text2cypher_agent
+Ask> Show compounds that treat both type 2 diabetes mellitus and hypertension.
 
-   MATCH (c1:Compound)-[:TREATS_CtD]->(d1:Disease {name: 'type 2 diabetes mellitus'}), 
-   (c1)-[:TREATS_CtD]->(d2:Disease {name: 'hypertension'})
-   RETURN c1, d1, d2
-   ```
+MATCH (c1:Compound)-[:TREATS_CtD]->(d1:Disease {name: 'type 2 diabetes mellitus'}), 
+(c1)-[:TREATS_CtD]->(d2:Disease {name: 'hypertension'})
+RETURN c1, d1, d2
+```
 
 ### Data
 
