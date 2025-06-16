@@ -20,22 +20,13 @@ From the `ui` directory, run:
 npm install
 ```
 
-**Step 2: ▶️ Running the Frontend & Backend**
+**Step 2: ▶️ Running the Application**
 
-Start the frontend development server, from the `ui` directory, run:
+From the root directory, run both frontend and backend:
 ```bash
-cd ui/
-npm run dev
+./run-dev.sh
 ```
 
-Launch the backend API (FastAPI), back to root directory, run:
-```bash
-uv run uvicorn src.api_server:app --reload
-```
-
-The backend exposes `/api/schema`, which the UI fetches to display a "Schema Viewer" panel listing all node labels and relationship types.
-
-Each browser session is identified by a random ID stored in `localStorage`. This
-ID is sent with API requests so that chat history is kept separate for each user
-without any account system.
-
+Or run them separately:
+- Frontend only (from `ui` directory): `npm run dev`
+- Backend only (from root): `uv run uvicorn src.api_server:app --reload`
