@@ -23,7 +23,7 @@
 
     <!-- code block -->
     <pre
-      class="bg-transparent text-gray-800 text-base overflow-x-auto font-mono whitespace-pre leading-snug"
+      class="bg-transparent text-gray-800 text-base overflow-x-auto font-mono whitespace-pre-wrap leading-snug"
     ><code>{{ text }}</code></pre>
   </div>
 </template>
