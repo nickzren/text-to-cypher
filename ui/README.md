@@ -30,7 +30,7 @@ npm run dev
 
 Launch the backend API (FastAPI), back to root directory, run:
 ```bash
-uvicorn src.api_server:app --reload
+uv run uvicorn src.api_server:app --reload
 ```
 
 The backend exposes `/api/schema`, which the UI fetches to display a "Schema Viewer" panel listing all node labels and relationship types.
