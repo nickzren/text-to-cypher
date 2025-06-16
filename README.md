@@ -64,7 +64,7 @@ You can also access the Neo4j Browser at http://localhost:7474 to run the Cypher
 
 ### Schema Hints (Optional)
 
-For unclear abbreviations in your schema, create `data/input/schema_hints.json`:
+For any unclear schema elements, create `data/input/schema_hints.json`:
 
 ```json
 {
