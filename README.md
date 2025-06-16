@@ -19,7 +19,8 @@ The following instructions are for setting up and running the lightweight AI age
 ### Prerequisites
 
 - Git
-- Miniconda (with Mamba)
+- Python 3.10+
+- pip
 
 ### Setup
 
@@ -27,23 +28,25 @@ The following instructions are for setting up and running the lightweight AI age
    ```sh
    git clone git@github.com:nickzren/text-to-cypher.git
    ```
-2. Initialize conda environment:
+2. Install uv and set up environment:
    ```sh
+   pip install uv
    cd text-to-cypher
-   mamba env create -f environment.yml
+   uv venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv sync
    ```
 3. Update the `.env` file to set `OPENAI_API_KEY`.
 
 ### Run
 
-1. Init environment:
+1. Activate environment:
    ```sh
    cd text-to-cypher
-   conda activate text-to-cypher
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 2. Run example scripts:
    ```sh
-   export PYTHONPATH="$PYTHONPATH:$(pwd)"
    python src/text2cypher_agent.py 
    Ask> Show compounds that treat both type 2 diabetes mellitus and hypertension.
 
@@ -77,6 +80,7 @@ For unclear abbreviations in your schema, create `data/input/schema_hints.json`:
     "OBSCURE_AbC": "A does something to C"
   }
 }
+```
 
 ---
 

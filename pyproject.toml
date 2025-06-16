@@ -1,0 +1,15 @@
+[project]
+name = "text-to-cypher"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain",
+    "langchain-community",
+    "langchain-openai",
+    "langgraph",
+    "openai",
+    "neo4j",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+]
