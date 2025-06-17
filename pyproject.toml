@@ -6,6 +6,7 @@ dependencies = [
     "langchain",
     "langchain-community",
     "langchain-openai",
+    "langchain-google-genai",
     "langgraph",
     "openai",
     "neo4j",
