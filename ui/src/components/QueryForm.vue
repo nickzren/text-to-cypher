@@ -8,23 +8,23 @@
         :rows="3"
         :autoResize="true"
         placeholder="Ask a natural‑language question to generate a Cypher query…"
-        class="w-full pr-24 text-sm query-input"
+        class="w-full pr-32 text-sm query-input"
         @keydown="handleKeydown"
       />
       
       <!-- Controls inside textarea -->
       <div class="absolute bottom-2 right-2 flex items-center gap-1">
-        <!-- Agent selector - PrimeVue Dropdown -->
+        <!-- LLM selector - PrimeVue Dropdown -->
         <Dropdown
-          v-model="selectedApi"
-          :options="apiOptions"
+          v-model="selectedLLM"
+          :options="llmOptions"
           optionLabel="label"
           optionValue="value"
-          class="agent-dropdown"
+          class="llm-dropdown"
           :pt="{
             root: { class: 'h-7 flex items-center text-xs' },
-            input: { class: 'py-0 px-2 pr-6 text-xs bg-transparent border-0 text-gray-600 flex items-center h-full' },
-            trigger: { class: 'w-5 flex items-center' },
+            input: { class: 'py-0 pl-2 pr-0 text-xs bg-transparent border-0 text-gray-600 flex items-center h-full' },
+            trigger: { class: 'w-4 flex items-center justify-center pl-0' },
             panel: { class: 'text-sm' },
             item: { class: 'py-1.5 px-3 text-sm' }
           }"
@@ -58,18 +58,19 @@ import Dropdown from 'primevue/dropdown';
 const props = defineProps({
   modelValue: String,
   loading: Boolean,
-  useRemote: Boolean,
+  selectedProvider: String,
 })
-const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote']);
+const emit = defineEmits(['update:modelValue', 'submit', 'update:selectedProvider']);
 
-const apiOptions = [
-  { label: 'Local', value: 'local' },
-  { label: 'Remote', value: 'remote' }
+const llmOptions = [
+  { label: 'o4-mini', value: 'openai' },
+  { label: 'OpenAI Assistant', value: 'assistant' },
+  { label: 'Gemini 2.5 Pro', value: 'google' }
 ];
 
-const selectedApi = computed({
-  get: () => (props.useRemote ? 'remote' : 'local'),
-  set: (val) => emit('update:useRemote', val === 'remote'),
+const selectedLLM = computed({
+  get: () => props.selectedProvider,
+  set: (val) => emit('update:selectedProvider', val),
 })
 
 const localValue = computed({
@@ -97,7 +98,7 @@ function handleKeydown(event) {
 :deep(.query-input.p-inputtextarea) {
   max-height: 10rem;
   overflow-y: auto;
-  padding-right: 6rem;
+  padding-right: 8rem;
   font-size: 0.875rem;
   line-height: 1.5;
   background-color: #f9fafb;
@@ -123,39 +124,48 @@ function handleKeydown(event) {
   margin: 0;
 }
 
-/* Make dropdown look more subtle and integrated */
-:deep(.agent-dropdown) {
+/* Make dropdown look more subtle and integrated with no spacing */
+:deep(.llm-dropdown) {
   min-width: auto;
   background-color: transparent;
   border: none;
   box-shadow: none;
 }
 
-:deep(.agent-dropdown:hover) {
+:deep(.llm-dropdown:hover) {
   background-color: #f3f4f6;
   border-radius: 0.25rem;
 }
 
-:deep(.agent-dropdown:not(.p-disabled).p-focus) {
+:deep(.llm-dropdown:not(.p-disabled).p-focus) {
   box-shadow: none;
   background-color: #f3f4f6;
 }
 
-:deep(.agent-dropdown .p-dropdown-trigger) {
+:deep(.llm-dropdown .p-dropdown-trigger) {
   background: transparent;
+  padding: 0;
+  margin-left: -2px; /* Pull trigger closer to text */
 }
 
-:deep(.agent-dropdown .p-dropdown-label) {
+:deep(.llm-dropdown .p-dropdown-label) {
   font-weight: 500;
   display: flex;
   align-items: center;
   height: 100%;
   line-height: 1;
+  padding-right: 0;
 }
 
 /* Ensure proper vertical alignment */
-:deep(.agent-dropdown .p-inputtext) {
+:deep(.llm-dropdown .p-inputtext) {
   display: flex;
   align-items: center;
+}
+
+/* Override the dropdown icon spacing */
+:deep(.llm-dropdown .p-icon) {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 </style>

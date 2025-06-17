@@ -11,6 +11,7 @@
         <MessageBubble
           :text="msg.content"
           :showRun="false"
+          :isAssistant="false"
           @copy="copyToClipboard"
         />
       </div>
@@ -20,10 +21,13 @@
         v-else-if="msg.role === 'assistant'"
         class="flex flex-col items-start gap-1"
       >
-        <span class="text-xs font-semibold text-gray-500">text2cypher</span>
+        <span class="text-xs font-semibold text-gray-500">
+          text2cypher{{ getModelLabel(msg.provider) }}
+        </span>
         <MessageBubble
           :text="stripFences(msg.content)"
           :showRun="true"
+          :isAssistant="true"
           @run="emit('run-query', stripFences(msg.content))"
           @copy="copyToClipboard"
         />
@@ -50,6 +54,15 @@ const props = defineProps({ messages: Array })
 
 /* helpers ----------------------------------------------------------- */
 const toast = useToast()
+
+function getModelLabel(provider) {
+  const labels = {
+    'openai': ' (o4-mini)',
+    'assistant': ' (OpenAI Assistant)',
+    'google': ' (Gemini 2.5 Pro)'
+  }
+  return labels[provider] || ''
+}
 
 function stripFences(text = '') {
   return text.replace(/^```(?:cypher)?/i, '').replace(/```$/, '').trim()

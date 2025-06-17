@@ -3,8 +3,8 @@
 """
 FastAPI service exposing:
 
-• POST /api/local/ask   – runs the local Text2CypherAgent
-• POST /api/remote/ask  – proxies question to the OpenAI Assistant
+- POST /api/ask   – runs Text2CypherAgent with selected provider
+- POST /api/assistant/ask  – proxies question to the OpenAI Assistant
 """
 
 import time
@@ -26,10 +26,10 @@ load_dotenv()
 OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
 client = OpenAI()
 
-# persistent thread for the remote assistant per session
-_REMOTE_THREADS: Dict[str, str] = {}
+# persistent thread for the assistant per session
+_ASSISTANT_THREADS: Dict[str, str] = {}
 
-# ── FastAPI app & CORS ───────────────────────────────────────────────
+# ── FastAPI app & CORS ───────────────────────────────────────────────────
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -39,30 +39,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── local Text‑to‑Cypher agent (schema retriever inside) ─────────────
-cypher_agent = Text2CypherAgent()
+# Create single instances of each provider agent that share history
+_AGENT_INSTANCES = {
+    "openai": None,
+    "google": None
+}
 
-# store agents by session id for multi-user support
-_AGENT_STORE: Dict[str, Text2CypherAgent] = {}
+# Store the last used provider for each message
+_MESSAGE_PROVIDERS = []
 
-def get_agent(session_id: Optional[str]) -> Text2CypherAgent:
-    """Return agent for ``session_id``, creating one if needed."""
-    if not session_id:
-        return cypher_agent
-    agent = _AGENT_STORE.get(session_id)
-    if agent is None:
-        agent = Text2CypherAgent()
-        _AGENT_STORE[session_id] = agent
-    return agent
+def get_or_create_agent(provider: str = "openai") -> Text2CypherAgent:
+    """Get or create a singleton agent for the provider."""
+    if _AGENT_INSTANCES[provider] is None:
+        _AGENT_INSTANCES[provider] = Text2CypherAgent(provider=provider)
+    return _AGENT_INSTANCES[provider]
 
-# ── request model ────────────────────────────────────────────────────
+# ── request models ────────────────────────────────────────────────────
 class QueryRequest(BaseModel):
     query: str
-    session_id: Optional[str] = None
+    session_id: str  # Used for assistant threads only
+    provider: Optional[str] = "openai"  # "openai" or "google"
 
 
 class SessionRequest(BaseModel):
-    session_id: Optional[str] = None
+    session_id: str
 
 # --------------------------------------------------------------------
 # Schema endpoint
@@ -73,78 +73,83 @@ async def fetch_schema():
     return get_schema()
 
 # --------------------------------------------------------------------
-# LOCAL agent endpoint
+# LLM agent endpoint
 # --------------------------------------------------------------------
-@app.post("/api/local/ask", tags=["local-agent"])
-async def ask_local_agent(req: QueryRequest):
+@app.post("/api/ask", tags=["llm-agent"])
+async def ask_llm_agent(req: QueryRequest):
     q = req.query.strip()
     if not q:
         return {"error": "Query cannot be empty."}
-    agent = get_agent(req.session_id)
+    
+    provider = req.provider or "openai"
+    if provider not in ["openai", "google"]:
+        return {"error": f"Invalid provider: {provider}"}
+    
+    agent = get_or_create_agent(provider)
     try:
+        # Track providers for messages
+        _MESSAGE_PROVIDERS.append("user")
+        _MESSAGE_PROVIDERS.append(provider)
+        
         cypher = agent.respond(q)
         return {"answer": cypher}
     except Exception as e:
+        print(f"Error in ask_llm_agent: {e}")
         return {"error": str(e)}
 
 
-@app.get("/api/remote/history", tags=["remote-agent"])
-async def remote_history(session_id: Optional[str] = None):
-    """Return conversation history for the remote assistant."""
-    thread_id = _REMOTE_THREADS.get(session_id or "default")
-    if thread_id is None:
-        return {"history": []}
-
-    loop = asyncio.get_running_loop()
-    msgs = await loop.run_in_executor(
-        None, partial(client.beta.threads.messages.list, thread_id=thread_id)
-    )
-    history = []
-    for m in reversed(msgs.data):  # chronological order
-        content = m.content[0].text.value.strip()
-        history.append({"role": m.role, "content": content})
+@app.get("/api/history", tags=["shared"])
+async def get_shared_history(session_id: str):
+    """Return shared conversation history with provider info."""
+    # Use openai agent to get the shared history
+    agent = get_or_create_agent("openai")
+    history = agent.get_history()
+    
+    # Add provider information to messages
+    for i, msg in enumerate(history):
+        if i < len(_MESSAGE_PROVIDERS):
+            if msg['role'] == 'assistant':
+                msg['provider'] = _MESSAGE_PROVIDERS[i] if _MESSAGE_PROVIDERS[i] != 'user' else None
+    
     return {"history": history}
 
 
-@app.post("/api/remote/clear", tags=["remote-agent"])
-async def clear_remote_history(req: SessionRequest):
-    """Reset the remote assistant conversation."""
-    thread_key = req.session_id or "default"
-    _REMOTE_THREADS.pop(thread_key, None)
-    return {"status": "cleared"}
-
-@app.get("/api/local/history", tags=["local-agent"])
-async def local_history(session_id: Optional[str] = None):
-    """Return conversation history for the local agent."""
-    agent = get_agent(session_id)
-    return {"history": agent.get_history()}
-
-@app.post("/api/local/clear", tags=["local-agent"])
-async def clear_local_history(req: SessionRequest):
-    """Clear the local agent chat history."""
-    agent = get_agent(req.session_id)
-    agent.clear_history()
+@app.post("/api/clear", tags=["shared"])
+async def clear_shared_history(req: SessionRequest):
+    """Clear the shared chat history for all providers."""
+    global _MESSAGE_PROVIDERS
+    _MESSAGE_PROVIDERS = []
+    
+    # Clear history for all agents
+    for provider in ["openai", "google"]:
+        agent = get_or_create_agent(provider)
+        agent.clear_history()
+    # Also clear the assistant thread if it exists
+    _ASSISTANT_THREADS.pop(req.session_id, None)
     return {"status": "cleared"}
 
 # --------------------------------------------------------------------
-# REMOTE assistant endpoint
+# OpenAI Assistant endpoint
 # --------------------------------------------------------------------
-@app.post("/api/remote/ask", tags=["remote-agent"])
-async def ask_remote_agent(req: QueryRequest):
-    """Send a question to the remote OpenAI Assistant (stateful)."""
+@app.post("/api/assistant/ask", tags=["assistant"])
+async def ask_assistant(req: QueryRequest):
+    """Send a question to the OpenAI Assistant (stateful)."""
     q = req.query.strip()
     if not q:
         return {"error": "Query cannot be empty."}
-    thread_key = req.session_id or "default"
-
+    
     try:
+        # Track providers for messages
+        _MESSAGE_PROVIDERS.append("user")
+        _MESSAGE_PROVIDERS.append("assistant")
+        
         loop = asyncio.get_running_loop()
         # initialise thread on first use
-        thread_id = _REMOTE_THREADS.get(thread_key)
+        thread_id = _ASSISTANT_THREADS.get(req.session_id)
         if thread_id is None:
             thread = await loop.run_in_executor(None, client.beta.threads.create)
             thread_id = thread.id
-            _REMOTE_THREADS[thread_key] = thread_id
+            _ASSISTANT_THREADS[req.session_id] = thread_id
 
         await loop.run_in_executor(
             None,
@@ -180,10 +185,12 @@ async def ask_remote_agent(req: QueryRequest):
             None,
             partial(client.beta.threads.messages.list, thread_id=thread_id),
         )
-        # OpenAI returns most-recent first → last assistant reply is msgs.data[0]
+        
+        # Get the assistant's response
         for m in msgs.data:
             if m.role == "assistant":
-                return {"answer": m.content[0].text.value.strip()}
+                answer = m.content[0].text.value.strip()
+                return {"answer": answer}
 
         return {"answer": "No response from assistant."}
 

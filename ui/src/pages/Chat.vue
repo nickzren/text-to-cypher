@@ -37,9 +37,9 @@
         <QueryForm
           v-model="query"
           :loading="loading"
-          :useRemote="useRemote"
+          :selectedProvider="selectedProvider"
           @submit="askAgent"
-          @update:useRemote="useRemote = $event"
+          @update:selectedProvider="selectedProvider = $event"
         />
       </div>
     </section>
@@ -57,22 +57,36 @@
       :style="{ width: schemaWidth + 'px' }"
       class="border-l border-gray-200 overflow-y-auto bg-gray-50 h-full z-10 fixed top-0 right-0 sm:static sm:block"
     >
-      <div class="border-b border-gray-200 p-2 flex gap-2 items-center bg-white">
-        <button
-          class="text-sm px-2"
-          :class="{ 'font-bold underline': sidebarTab === 'schema' }"
-          @click="sidebarTab = 'schema'"
-        >Schema</button>
-        <button
-          class="text-sm px-2"
-          :class="{ 'font-bold underline': sidebarTab === 'cypher' }"
-          @click="sidebarTab = 'cypher'"
-        >Cypher</button>
-        <button 
-          class="ml-auto text-xl px-2 hover:bg-gray-100 rounded" 
-          @click="hideSidebar" 
-          title="Close"
-        >&times;</button>
+      <div class="border-b border-gray-200 bg-white sticky top-0 z-10">
+        <div class="p-3 flex gap-1 items-center">
+          <button
+            class="flex-1 text-sm px-3 py-1.5 rounded transition-colors flex items-center justify-center gap-1"
+            :class="sidebarTab === 'schema' 
+              ? 'bg-sky-100 text-sky-700 font-medium' 
+              : 'text-gray-600 hover:bg-gray-100'"
+            @click="sidebarTab = 'schema'"
+          >
+            <i class="pi pi-sitemap text-xs"></i>
+            <span>Schema</span>
+          </button>
+          <button
+            class="flex-1 text-sm px-3 py-1.5 rounded transition-colors flex items-center justify-center gap-1"
+            :class="sidebarTab === 'cypher' 
+              ? 'bg-sky-100 text-sky-700 font-medium' 
+              : 'text-gray-600 hover:bg-gray-100'"
+            @click="sidebarTab = 'cypher'"
+          >
+            <i class="pi pi-code text-xs"></i>
+            <span>Cypher</span>
+          </button>
+          <button 
+            class="ml-2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors flex items-center justify-center" 
+            @click="hideSidebar" 
+            title="Close"
+          >
+            <i class="pi pi-times text-sm"></i>
+          </button>
+        </div>
       </div>
       <component
         :is="sidebarTab === 'schema' ? SchemaViewer : QuickCypher"
@@ -169,10 +183,10 @@ const chatMargin = computed(() => {
 });
 
 const query = ref('');
-const messages = ref(/** @type {{role:string,content:string}[]} */([]));
+const messages = ref(/** @type {{role:string,content:string,provider?:string}[]} */([]));
 const loading = ref(false);
-// remember last‑chosen agent across page refreshes
-const useRemote = ref(localStorage.getItem('useRemote') === 'true');
+// remember last‑chosen provider across page refreshes
+const selectedProvider = ref(localStorage.getItem('selectedProvider') || 'openai');
 const sessionIdKey = 'sessionId';
 let sid = localStorage.getItem(sessionIdKey);
 if (!sid) {
@@ -180,8 +194,6 @@ if (!sid) {
   localStorage.setItem(sessionIdKey, sid);
 }
 const sessionId = sid;
-
-const apiBase = computed(() => (useRemote.value ? '/api/remote' : '/api/local'));
 
 function runQuery(cypher) {
   if (!cypher.trim()) return;
@@ -222,16 +234,26 @@ async function askAgent() {
   query.value = '';
   loading.value = true;
 
-  const endpoint = `${apiBase.value}/ask`;
+  const endpoint = selectedProvider.value === 'assistant' ? '/api/assistant/ask' : '/api/ask';
+  const payload = {
+    query: question,
+    session_id: sessionId,
+    ...(selectedProvider.value !== 'assistant' && { provider: selectedProvider.value })
+  };
 
   try {
-    const res = await axios.post(endpoint, { query: question, session_id: sessionId });
+    const res = await axios.post(endpoint, payload);
     const ans = res.data.answer || 'No response received.';
-    messages.value.push({ role: 'assistant', content: ans });
+    messages.value.push({ 
+      role: 'assistant', 
+      content: ans,
+      provider: selectedProvider.value 
+    });
   } catch (err) {
     messages.value.push({
       role: 'assistant',
-      content: 'Error: ' + (err.response?.data?.detail || err.message || 'Unknown error.')
+      content: 'Error: ' + (err.response?.data?.error || err.message || 'Unknown error.'),
+      provider: selectedProvider.value
     });
   } finally {
     loading.value = false;
@@ -239,7 +261,9 @@ async function askAgent() {
 }
 
 async function loadHistory() {
-  const endpoint = `${apiBase.value}/history?session_id=${sessionId}`;
+  // Always use the shared history endpoint
+  const endpoint = `/api/history?session_id=${sessionId}`;
+    
   try {
     const res = await axios.get(endpoint);
     messages.value = res.data.history || [];
@@ -250,16 +274,19 @@ async function loadHistory() {
 
 async function clearHistory() {
   messages.value = [];
-  const endpoint = `${apiBase.value}/clear`;
+  // Use the shared clear endpoint
+  const endpoint = '/api/clear';
+  const payload = { session_id: sessionId };
+  
   try {
-    await axios.post(endpoint, { session_id: sessionId });
+    await axios.post(endpoint, payload);
   } catch {}
 }
 
 onMounted(loadHistory);
-watch(useRemote, val => {
-  localStorage.setItem('useRemote', val);
-  loadHistory();
+// No need to reload history when switching providers anymore
+watch(selectedProvider, val => {
+  localStorage.setItem('selectedProvider', val);
 });
 </script>
 

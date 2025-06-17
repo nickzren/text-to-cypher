@@ -5,6 +5,7 @@ import sys
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -15,7 +16,8 @@ from src.schema_loader import get_schema, get_schema_hints
 
 load_dotenv()
 
-_HISTORY_STORE: dict[str, ChatMessageHistory] = {}
+# Single shared history store for all providers
+_SHARED_HISTORY = ChatMessageHistory()
 
 SYSTEM_RULES = (
     "You are a Cypher-generating assistant. Follow these rules:\n"
@@ -26,18 +28,28 @@ SYSTEM_RULES = (
     "5. When the user mentions a label/relationship/property absent from the schema, first map it to the closest existing element (exact synonym, substring, or highest-similarity fuzzy match). Ask for clarification only if multiple matches are equally plausible, offering up to three suggestions.\n"
 )
 
-def make_llm():
-    """Return a temperature‑0 ChatOpenAI instance (OpenAI‑only)."""
-    return ChatOpenAI(
-        base_url=get_env_variable("OPENAI_API_BASE_URL"),
-        api_key=get_env_variable("OPENAI_API_KEY"),
-        model=get_env_variable("OPENAI_API_MODEL")
-    )
+def make_llm(provider: str = "openai"):
+    """Return a Chat instance for the specified provider."""
+    if provider == "openai":
+        return ChatOpenAI(
+            base_url=get_env_variable("OPENAI_API_BASE_URL"),
+            api_key=get_env_variable("OPENAI_API_KEY"),
+            model=get_env_variable("OPENAI_API_MODEL")
+        )
+    elif provider == "google":
+        return ChatGoogleGenerativeAI(
+            model=get_env_variable("GOOGLE_MODEL"),
+            google_api_key=get_env_variable("GOOGLE_API_KEY"),
+            temperature=0
+        )
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
 
 class Text2CypherAgent:
     """Single‑LLM agent that remembers conversation context + schema."""
 
-    def __init__(self):
+    def __init__(self, provider: str = "openai"):
+        self.provider = provider
         self.schema_json = get_schema()
         self.schema_str = json.dumps(self.schema_json, indent=2)
         self.hints = get_schema_hints()
@@ -50,8 +62,8 @@ class Text2CypherAgent:
             hints_str = json.dumps(self.hints, indent=2).replace('{', '{{').replace('}', '}}')
             system_prompt += "\n\n### Schema Hints\n" + hints_str
 
-        self.llm        = make_llm()
-        self.session_id = str(uuid.uuid4())
+        self.llm = make_llm(provider)
+        self.session_id = "shared"  # All agents use same session for shared history
 
         # build prompt template with history placeholder
         self.prompt = ChatPromptTemplate.from_messages([
@@ -63,9 +75,7 @@ class Text2CypherAgent:
         chain_core = self.prompt | self.llm
 
         def get_history(session_id: str):
-            if session_id not in _HISTORY_STORE:
-                _HISTORY_STORE[session_id] = ChatMessageHistory()
-            return _HISTORY_STORE[session_id]
+            return _SHARED_HISTORY
 
         self.chain = RunnableWithMessageHistory(
             chain_core,
@@ -83,18 +93,16 @@ class Text2CypherAgent:
 
     def get_history(self) -> list[dict[str, str]]:
         """Return chat history as list of {role, content} dicts."""
-        hist = _HISTORY_STORE.get(self.session_id)
-        if not hist:
-            return []
         messages = []
-        for m in hist.messages:
+        for m in _SHARED_HISTORY.messages:
             role = "assistant" if getattr(m, "type", "") == "ai" else "user"
             messages.append({"role": role, "content": m.content})
         return messages
 
     def clear_history(self) -> None:
-        """Erase stored chat history for this session."""
-        _HISTORY_STORE[self.session_id] = ChatMessageHistory()
+        """Clear the shared history."""
+        global _SHARED_HISTORY
+        _SHARED_HISTORY = ChatMessageHistory()
 
 if __name__ == "__main__":
     try:
