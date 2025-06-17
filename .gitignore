@@ -40,4 +40,5 @@ Thumbs.db
 logs/
 *.log
 
+# Lock files
 uv.lock

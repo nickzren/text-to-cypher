@@ -1,7 +1,12 @@
 #!/bin/bash
-# run-dev.sh - Start both backend and frontend development servers
+# scripts/run-dev.sh - Start both backend and frontend development servers
 
 set -e  # Exit on error
+
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Move to the project root (parent of scripts directory)
+cd "$SCRIPT_DIR/.."
 
 # Colors for output
 GREEN='\033[0;32m'
