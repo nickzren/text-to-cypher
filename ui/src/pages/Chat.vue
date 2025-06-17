@@ -1,41 +1,53 @@
+<!-- ui/src/pages/Chat.vue -->
 <template>
   <!-- ⚙️ desktop split‑view, mobile overlay -->
-  <div class="h-screen flex overflow-hidden">
+  <div class="h-screen flex overflow-hidden bg-white">
     <!-- 🄰  chat column (flex‑1) -->
-    <section class="flex flex-col h-full flex-1 max-w-none px-4 pt-10 mx-auto gap-4">
-      <!-- header -->
-      <div class="text-center">
-        <div class="flex justify-center items-center mb-4">
-          <img src="../assets/logo.png" alt="Logo" class="h-38 w-auto" />
-        </div>
+    <section 
+      class="flex flex-col h-full flex-1 max-w-none overflow-hidden"
+      :style="{ paddingInline: chatMargin + 'px' }"
+    >
+      <!-- Header with logo and new chat button -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <img 
+          src="../assets/logo.png" 
+          alt="Text to Cypher" 
+          class="h-13 w-auto" 
+        />
+        
+        <button
+          @click="clearHistory"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+        >
+          <i class="pi pi-plus text-sm"></i>
+          New Chat
+        </button>
       </div>
 
-      <!-- top query form (desktop) -->
-      <QueryForm
-        :style="{ marginInline: chatMargin + 'px' }"
-        :class="inputAtBottom ? 'sticky bottom-0 bg-white pt-1 order-2' : 'order-0'"
-        v-model="query"
-        :loading="loading"
-        :useRemote="useRemote"
-        @submit="askAgent"
-        @clear="clearHistory"
-        @update:useRemote="useRemote = $event"
-      />
-
       <!-- scrollable history -->
-      <ChatHistory
-        :messages="messages"
-        class="flex-1 overflow-y-auto order-1"
-        :style="{ marginInline: chatMargin + 'px' }"
-        @run-query="runQuery"
-      />
+      <div class="flex-1 overflow-y-auto px-4 py-4">
+        <ChatHistory
+          :messages="messages"
+          @run-query="runQuery"
+        />
+      </div>
 
+      <!-- query form at bottom -->
+      <div class="border-t border-gray-200 px-4 py-3">
+        <QueryForm
+          v-model="query"
+          :loading="loading"
+          :useRemote="useRemote"
+          @submit="askAgent"
+          @update:useRemote="useRemote = $event"
+        />
+      </div>
     </section>
 
     <!-- 🄱  drag handle (desktop only) -->
     <div
       v-show="!isMobile && sidebarVisible"
-      class="w-2 cursor-col-resize bg-gray-200 hover:bg-gray-300"
+      class="w-px bg-gray-200 hover:bg-gray-300 cursor-col-resize transition-colors"
       @mousedown="startDrag"
     ></div>
 
@@ -43,9 +55,9 @@
     <aside
       v-show="sidebarVisible && (!isMobile || showSidebar)"
       :style="{ width: schemaWidth + 'px' }"
-      class="border-l overflow-y-auto bg-white h-full z-10 fixed top-0 right-0 sm:static sm:block"
+      class="border-l border-gray-200 overflow-y-auto bg-gray-50 h-full z-10 fixed top-0 right-0 sm:static sm:block"
     >
-      <div class="border-b p-2 flex gap-2 items-center">
+      <div class="border-b border-gray-200 p-2 flex gap-2 items-center bg-white">
         <button
           class="text-sm px-2"
           :class="{ 'font-bold underline': sidebarTab === 'schema' }"
@@ -56,7 +68,11 @@
           :class="{ 'font-bold underline': sidebarTab === 'cypher' }"
           @click="sidebarTab = 'cypher'"
         >Cypher</button>
-        <button class="ml-auto text-xl px-2" @click="hideSidebar" title="Close">&times;</button>
+        <button 
+          class="ml-auto text-xl px-2 hover:bg-gray-100 rounded" 
+          @click="hideSidebar" 
+          title="Close"
+        >&times;</button>
       </div>
       <component
         :is="sidebarTab === 'schema' ? SchemaViewer : QuickCypher"
@@ -67,24 +83,28 @@
   </div>
 
   <!-- Floating toggles for mobile when panel hidden -->
-  <div v-if="isMobile && !showSidebar" class="fixed bottom-4 right-4 flex flex-col gap-2">
+  <div v-if="isMobile && !showSidebar" class="fixed bottom-4 right-4 flex flex-col gap-2 z-20">
     <button
       @click="openSidebar('schema')"
-      class="p-3 rounded-full shadow bg-sky-600 text-white"
-    >Schema</button>
+      class="p-3 rounded-full shadow-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+    >
+      <i class="pi pi-book text-lg"></i>
+    </button>
     <button
       @click="openSidebar('cypher')"
-      class="p-3 rounded-full shadow bg-sky-600 text-white"
-    >Cypher</button>
+      class="p-3 rounded-full shadow-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+    >
+      <i class="pi pi-code text-lg"></i>
+    </button>
   </div>
 
   <!-- desktop show button when hidden -->
   <button
     v-if="!isMobile && !sidebarVisible"
     @click="sidebarVisible = true"
-    class="fixed top-1/2 right-0 p-2 rounded-l shadow bg-sky-600 text-white"
+    class="fixed top-1/2 right-0 p-2 rounded-l shadow-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
   >
-    &lt;
+    <i class="pi pi-angle-left"></i>
   </button>
 </template>
 
@@ -117,12 +137,15 @@ function onResize() {
     sidebarVisible.value = true;
   }
 }
+
 onMounted(() => {
   window.addEventListener('resize', onResize, { passive: true });
   onResize();
 });
+
 onUnmounted(() => window.removeEventListener('resize', onResize));
 
+// Horizontal resizing for sidebar
 function startDrag(e) {
   const startX     = e.clientX;
   const startWidth = schemaWidth.value;
@@ -142,7 +165,7 @@ const chatMargin = computed(() => {
   const leftover = windowWidth.value - sidebarWidth - CHAT_MIN_WIDTH;
   const half     = leftover / 2;
   if (half >= MAX_MARGIN) return MAX_MARGIN;
-  return Math.max(16, half); // keep at least 16 px
+  return Math.max(16, half); // keep at least 16 px
 });
 
 const query = ref('');
@@ -150,7 +173,6 @@ const messages = ref(/** @type {{role:string,content:string}[]} */([]));
 const loading = ref(false);
 // remember last‑chosen agent across page refreshes
 const useRemote = ref(localStorage.getItem('useRemote') === 'true');
-const inputAtBottom = ref(false);
 const sessionIdKey = 'sessionId';
 let sid = localStorage.getItem(sessionIdKey);
 if (!sid) {
@@ -197,7 +219,6 @@ async function askAgent() {
 
   const question = query.value;
   messages.value.push({ role: 'user', content: question });
-  inputAtBottom.value = true;
   query.value = '';
   loading.value = true;
 
@@ -222,16 +243,13 @@ async function loadHistory() {
   try {
     const res = await axios.get(endpoint);
     messages.value = res.data.history || [];
-    inputAtBottom.value = messages.value.length > 0;
   } catch {
     messages.value = [];
-    inputAtBottom.value = false;
   }
 }
 
 async function clearHistory() {
   messages.value = [];
-  inputAtBottom.value = false;
   const endpoint = `${apiBase.value}/clear`;
   try {
     await axios.post(endpoint, { session_id: sessionId });
@@ -246,27 +264,7 @@ watch(useRemote, val => {
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-section,
-aside {
-  min-height: 0; /* let the grid cells shrink properly */
-}
-
-/* ensure the drag handle stretches full height */
 .cursor-col-resize {
-  min-height: 100%;
-}
-
-/* hide body scrollbars when mobile overlay is open */
-body.overlay-open {
-  overflow: hidden;
+  user-select: none;
 }
 </style>

@@ -1,85 +1,71 @@
+<!-- ui/src/components/QueryForm.vue -->
 <template>
-  <Card class="shadow-2 mb-4">
-    <template #title>
-      <div class="flex justify-between items-center">
-        <span class="text-primary font-medium flex items-center gap-2">
-          Ask AI <i class="pi pi-android"></i>
-        </span>
-
-        <div class="flex items-center gap-4">
-          <!-- Local agent -->
-          <div
-            class="flex items-center gap-2"
-            v-tooltip="'Runs the in‑process schema‑retriever agent (no remote calls).'"
-          >
-            <RadioButton v-model="selectedApi" inputId="local" value="local" />
-            <label for="local" class="font-medium text-sm cursor-pointer"
-              >Local Agent</label
-            >
-          </div>
-
-          <!-- Remote (Assistant) agent -->
-          <div
-            class="flex items-center gap-2"
-            v-tooltip="'Sends the question to the OpenAI Assistant you configured remotely.'"
-          >
-            <RadioButton v-model="selectedApi" inputId="remote" value="remote" />
-            <label for="remote" class="font-medium text-sm cursor-pointer"
-              >Remote Agent</label
-            >
-          </div>
-        </div>
+  <div class="relative">
+    <!-- Main input with integrated controls -->
+    <div class="relative flex items-center">
+      <Textarea
+        v-model="localValue"
+        :rows="3"
+        :autoResize="true"
+        placeholder="Ask a natural‑language question to generate a Cypher query…"
+        class="w-full pr-24 text-sm query-input"
+        @keydown="handleKeydown"
+      />
+      
+      <!-- Controls inside textarea -->
+      <div class="absolute bottom-2 right-2 flex items-center gap-1">
+        <!-- Agent selector - PrimeVue Dropdown -->
+        <Dropdown
+          v-model="selectedApi"
+          :options="apiOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="agent-dropdown"
+          :pt="{
+            root: { class: 'h-7 flex items-center text-xs' },
+            input: { class: 'py-0 px-2 pr-6 text-xs bg-transparent border-0 text-gray-600 flex items-center h-full' },
+            trigger: { class: 'w-5 flex items-center' },
+            panel: { class: 'text-sm' },
+            item: { class: 'py-1.5 px-3 text-sm' }
+          }"
+        />
+        
+        <!-- Submit button - PrimeVue Button -->
+        <Button
+          @click="submitForm"
+          :disabled="!localValue.trim() || loading"
+          :loading="loading"
+          icon="pi pi-arrow-up"
+          severity="info"
+          size="small"
+          class="submit-button"
+          :pt="{
+            root: { class: 'w-7 h-7' },
+            icon: { class: 'text-xs' }
+          }"
+        />
       </div>
-    </template>
-
-    <template #content>
-      <form @submit.prevent="submitForm" class="p-fluid">
-        <div class="field mb-3">
-          <Textarea
-            v-model="localValue"
-            rows="5"
-            autoResize
-            placeholder="Ask a natural‑language question to generate a Cypher query…"
-            class="w-full"
-          />
-        </div>
-        <div class="field text-right flex gap-2 justify-end">
-          <Button
-            type="button"
-            label="Clear"
-            icon="pi pi-trash"
-            severity="secondary"
-            @click="clear"
-          />
-          <Button
-            type="submit"
-            label="Submit Query"
-            icon="pi pi-send"
-            severity="info"
-            :loading="loading"
-            :disabled="!localValue.trim()"
-          />
-        </div>
-      </form>
-    </template>
-  </Card>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
-import Card from 'primevue/card';
-import RadioButton from 'primevue/radiobutton';
-import Tooltip from 'primevue/tooltip';
+import Dropdown from 'primevue/dropdown';
 
 const props = defineProps({
   modelValue: String,
   loading: Boolean,
-  useRemote: Boolean,   // sync selected agent from parent
+  useRemote: Boolean,
 })
-const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote', 'clear']);
+const emit = defineEmits(['update:modelValue', 'submit', 'update:useRemote']);
 
+const apiOptions = [
+  { label: 'Local', value: 'local' },
+  { label: 'Remote', value: 'remote' }
+];
 
 const selectedApi = computed({
   get: () => (props.useRemote ? 'remote' : 'local'),
@@ -92,16 +78,84 @@ const localValue = computed({
 });
 
 function submitForm() {
-  emit('submit');
+  if (localValue.value.trim() && !props.loading) {
+    emit('submit');
+  }
 }
 
-function clear() {
-  emit('clear');
+function handleKeydown(event) {
+  // Submit on Enter (without Shift)
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    submitForm();
+  }
 }
 </script>
 
 <style scoped>
-.cursor-pointer {
-  cursor: pointer;
+/* Clean textarea styling */
+:deep(.query-input.p-inputtextarea) {
+  max-height: 10rem;
+  overflow-y: auto;
+  padding-right: 6rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  min-height: 5rem; /* Ensure minimum height for 3 lines */
+}
+
+:deep(.query-input.p-inputtextarea:focus) {
+  background-color: white;
+  border-color: #d1d5db;
+  outline: none;
+}
+
+/* Override PrimeVue button padding to make it more square */
+:deep(.submit-button.p-button) {
+  padding: 0;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+}
+
+:deep(.submit-button .p-button-icon) {
+  margin: 0;
+}
+
+/* Make dropdown look more subtle and integrated */
+:deep(.agent-dropdown) {
+  min-width: auto;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+:deep(.agent-dropdown:hover) {
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+}
+
+:deep(.agent-dropdown:not(.p-disabled).p-focus) {
+  box-shadow: none;
+  background-color: #f3f4f6;
+}
+
+:deep(.agent-dropdown .p-dropdown-trigger) {
+  background: transparent;
+}
+
+:deep(.agent-dropdown .p-dropdown-label) {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  line-height: 1;
+}
+
+/* Ensure proper vertical alignment */
+:deep(.agent-dropdown .p-inputtext) {
+  display: flex;
+  align-items: center;
 }
 </style>
