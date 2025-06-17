@@ -7,8 +7,10 @@ FastAPI service exposing:
 - POST /api/assistant/ask  – proxies question to the OpenAI Assistant
 """
 
+import os
 import time
 import asyncio
+from pathlib import Path
 from functools import partial
 from typing import Optional, Dict
 
@@ -23,14 +25,20 @@ from src.utils import get_env_variable
 from src.schema_loader import get_schema
 
 load_dotenv()
-OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
-client = OpenAI()
 
-# persistent thread for the assistant per session
-_ASSISTANT_THREADS: Dict[str, str] = {}
-
-# ── FastAPI app & CORS ───────────────────────────────────────────────────
+# ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI()
+
+# ── Serve static files in production ─────────────────────────────────
+# This MUST come before CORS middleware
+if os.getenv("NODE_ENV") == "production":
+    from fastapi.staticfiles import StaticFiles
+    ui_dist = Path(__file__).parent.parent / "ui" / "dist"
+    if ui_dist.exists():
+        # API routes will take precedence over static files
+        app.mount("/", StaticFiles(directory=str(ui_dist), html=True), name="static")
+
+# ── CORS middleware (after static files) ─────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -38,6 +46,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+OPENAI_ASSISTANT_ID = get_env_variable("OPENAI_ASSISTANT_ID")
+client = OpenAI()
+
+# persistent thread for the assistant per session
+_ASSISTANT_THREADS: Dict[str, str] = {}
 
 # Create single instances of each provider agent that share history
 _AGENT_INSTANCES = {

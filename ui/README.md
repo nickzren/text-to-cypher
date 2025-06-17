@@ -24,7 +24,7 @@ npm install
 
 From the root directory, run both frontend and backend:
 ```bash
-./run-dev.sh
+./scripts/run-dev.sh
 ```
 
 Or run them separately:
