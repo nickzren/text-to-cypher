@@ -5,6 +5,13 @@ from neo4j import GraphDatabase
 from utils import get_env_variable
 import sys
 
+def _sort_schema(d: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
+    """
+    Return a new mapping where the top‑level keys and each nested property
+    map are sorted alphabetically.  Helps guarantee deterministic JSON
+    output when the database hasn’t changed.
+    """
+    return {lbl: dict(sorted(props.items())) for lbl, props in sorted(d.items())}
 
 def main():
     parser = argparse.ArgumentParser(description="Export Neo4j schema.")
@@ -31,9 +38,14 @@ def main():
         node_schema = get_node_schema(session)
         rel_schema  = get_relationship_schema(session)
 
+        # sort keys for deterministic output
+        node_schema = _sort_schema(node_schema)
+        rel_schema  = _sort_schema(rel_schema)
+
     schema = {"NodeTypes": node_schema, "RelationshipTypes": rel_schema}
     out_path = output_dir / "neo4j_schema.json"
-    out_path.write_text(json.dumps(schema, indent=2))
+    json_str = json.dumps(schema, indent=2, sort_keys=True)
+    out_path.write_text(json_str)
     print(f"Schema dumped → {out_path}")
 
 
@@ -97,8 +109,10 @@ def get_relationship_schema(session):
     for rtype in rel_schema:
         q_sample = f'''
         MATCH (s)-[r:`{rtype}`]->(t)
-        WITH head(labels(s)) AS src, head(labels(t)) AS tgt
-        RETURN src, tgt LIMIT 1
+        WITH head(labels(s)) AS src, head(labels(t)) AS tgt, elementId(r) AS rid
+        ORDER BY rid
+        RETURN src, tgt
+        LIMIT 1
         '''
         rec = session.run(q_sample).single()
         if rec:

@@ -1,5 +1,14 @@
 {
   "NodeTypes": {
+    "Anatomy": {
+      "bto_id": "String",
+      "identifier": "String",
+      "license": "String",
+      "mesh_id": "String",
+      "name": "String",
+      "source": "String",
+      "url": "String"
+    },
     "BiologicalProcess": {
       "identifier": "String",
       "license": "String",
@@ -7,40 +16,17 @@
       "source": "String",
       "url": "String"
     },
-    "MolecularFunction": {
+    "CellularComponent": {
       "identifier": "String",
       "license": "String",
       "name": "String",
       "source": "String",
       "url": "String"
     },
-    "Symptom": {
+    "Compound": {
       "identifier": "String",
-      "license": "String",
-      "name": "String",
-      "source": "String",
-      "url": "String"
-    },
-    "Gene": {
-      "identifier": "Long",
-      "license": "String",
-      "name": "String",
-      "source": "String",
-      "url": "String",
-      "chromosome": "String",
-      "description": "String"
-    },
-    "Anatomy": {
-      "identifier": "String",
-      "license": "String",
-      "name": "String",
-      "source": "String",
-      "url": "String",
-      "bto_id": "String",
-      "mesh_id": "String"
-    },
-    "Pathway": {
-      "identifier": "String",
+      "inchi": "String",
+      "inchikey": "String",
       "license": "String",
       "name": "String",
       "source": "String",
@@ -53,31 +39,45 @@
       "source": "String",
       "url": "String"
     },
-    "PharmacologicClass": {
-      "identifier": "String",
+    "Gene": {
+      "chromosome": "String",
+      "description": "String",
+      "identifier": "Long",
       "license": "String",
       "name": "String",
       "source": "String",
-      "url": "String",
-      "class_type": "String"
+      "url": "String"
     },
-    "CellularComponent": {
+    "MolecularFunction": {
       "identifier": "String",
       "license": "String",
       "name": "String",
       "source": "String",
       "url": "String"
     },
-    "Compound": {
+    "Pathway": {
       "identifier": "String",
       "license": "String",
       "name": "String",
       "source": "String",
-      "url": "String",
-      "inchi": "String",
-      "inchikey": "String"
+      "url": "String"
+    },
+    "PharmacologicClass": {
+      "class_type": "String",
+      "identifier": "String",
+      "license": "String",
+      "name": "String",
+      "source": "String",
+      "url": "String"
     },
     "SideEffect": {
+      "identifier": "String",
+      "license": "String",
+      "name": "String",
+      "source": "String",
+      "url": "String"
+    },
+    "Symptom": {
       "identifier": "String",
       "license": "String",
       "name": "String",
@@ -86,229 +86,229 @@
     }
   },
   "RelationshipTypes": {
-    "DOWNREGULATES_DdG": {
-      "license": "String",
-      "source": "String",
-      "log2_fold_change": "Double",
-      "unbiased": "Boolean",
+    "ASSOCIATES_DaG": {
       "_endpoints": [
         "Disease",
         "Gene"
-      ]
-    },
-    "PARTICIPATES_GpCC": {
+      ],
       "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Gene",
-        "CellularComponent"
-      ]
-    },
-    "DOWNREGULATES_AdG": {
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Anatomy",
-        "Gene"
-      ]
-    },
-    "UPREGULATES_AuG": {
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Anatomy",
-        "Gene"
-      ]
-    },
-    "PALLIATES_CpD": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Compound",
-        "Disease"
-      ]
-    },
-    "INCLUDES_PCiC": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "PharmacologicClass",
-        "Compound"
-      ]
+      "sources": "StringArray",
+      "unbiased": "Boolean"
     },
     "BINDS_CbG": {
-      "license": "String",
-      "unbiased": "Boolean",
+      "_endpoints": [
+        "Compound",
+        "Gene"
+      ],
       "actions": "StringArray",
+      "affinity_nM": "Double",
+      "license": "String",
       "pubmed_ids": "StringArray",
       "sources": "StringArray",
-      "urls": "StringArray",
-      "affinity_nM": "Double",
-      "_endpoints": [
-        "Compound",
-        "Gene"
-      ]
-    },
-    "PRESENTS_DpS": {
-      "license": "String",
-      "source": "String",
       "unbiased": "Boolean",
-      "_endpoints": [
-        "Disease",
-        "Symptom"
-      ]
-    },
-    "PARTICIPATES_GpMF": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Gene",
-        "MolecularFunction"
-      ]
-    },
-    "RESEMBLES_DrD": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Disease",
-        "Disease"
-      ]
-    },
-    "RESEMBLES_CrC": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "similarity": "Double",
-      "_endpoints": [
-        "Compound",
-        "Compound"
-      ]
-    },
-    "ASSOCIATES_DaG": {
-      "license": "String",
-      "unbiased": "Boolean",
-      "sources": "StringArray",
-      "_endpoints": [
-        "Disease",
-        "Gene"
-      ]
-    },
-    "REGULATES_GrG": {
-      "source": "String",
-      "unbiased": "Boolean",
-      "method": "String",
-      "subtypes": "StringArray",
-      "_endpoints": [
-        "Gene",
-        "Gene"
-      ]
-    },
-    "TREATS_CtD": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Compound",
-        "Disease"
-      ]
-    },
-    "UPREGULATES_CuG": {
-      "source": "String",
-      "unbiased": "Boolean",
-      "method": "String",
-      "z_score": "Double",
-      "_endpoints": [
-        "Compound",
-        "Gene"
-      ]
-    },
-    "DOWNREGULATES_CdG": {
-      "source": "String",
-      "unbiased": "Boolean",
-      "method": "String",
-      "z_score": "Double",
-      "_endpoints": [
-        "Compound",
-        "Gene"
-      ]
-    },
-    "INTERACTS_GiG": {
-      "unbiased": "Boolean",
-      "sources": "StringArray",
-      "_endpoints": [
-        "Gene",
-        "Gene"
-      ]
-    },
-    "PARTICIPATES_GpPW": {
-      "license": "String",
-      "source": "String",
-      "url": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Gene",
-        "Pathway"
-      ]
-    },
-    "LOCALIZES_DlA": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Disease",
-        "Anatomy"
-      ]
-    },
-    "PARTICIPATES_GpBP": {
-      "license": "String",
-      "source": "String",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Gene",
-        "BiologicalProcess"
-      ]
-    },
-    "UPREGULATES_DuG": {
-      "license": "String",
-      "source": "String",
-      "log2_fold_change": "Double",
-      "unbiased": "Boolean",
-      "_endpoints": [
-        "Disease",
-        "Gene"
-      ]
+      "urls": "StringArray"
     },
     "CAUSES_CcSE": {
-      "license": "String",
-      "source": "String",
-      "url": "String",
-      "unbiased": "Boolean",
       "_endpoints": [
         "Compound",
         "SideEffect"
-      ]
-    },
-    "EXPRESSES_AeG": {
+      ],
       "license": "String",
-      "unbiased": "Boolean",
-      "sources": "StringArray",
-      "_endpoints": [
-        "Anatomy",
-        "Gene"
-      ]
-    },
-    "COVARIES_GcG": {
       "source": "String",
       "unbiased": "Boolean",
+      "url": "String"
+    },
+    "COVARIES_GcG": {
       "_endpoints": [
         "Gene",
         "Gene"
-      ]
+      ],
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "DOWNREGULATES_AdG": {
+      "_endpoints": [
+        "Anatomy",
+        "Gene"
+      ],
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "DOWNREGULATES_CdG": {
+      "_endpoints": [
+        "Compound",
+        "Gene"
+      ],
+      "method": "String",
+      "source": "String",
+      "unbiased": "Boolean",
+      "z_score": "Double"
+    },
+    "DOWNREGULATES_DdG": {
+      "_endpoints": [
+        "Disease",
+        "Gene"
+      ],
+      "license": "String",
+      "log2_fold_change": "Double",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "EXPRESSES_AeG": {
+      "_endpoints": [
+        "Anatomy",
+        "Gene"
+      ],
+      "license": "String",
+      "sources": "StringArray",
+      "unbiased": "Boolean"
+    },
+    "INCLUDES_PCiC": {
+      "_endpoints": [
+        "PharmacologicClass",
+        "Compound"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "INTERACTS_GiG": {
+      "_endpoints": [
+        "Gene",
+        "Gene"
+      ],
+      "sources": "StringArray",
+      "unbiased": "Boolean"
+    },
+    "LOCALIZES_DlA": {
+      "_endpoints": [
+        "Disease",
+        "Anatomy"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "PALLIATES_CpD": {
+      "_endpoints": [
+        "Compound",
+        "Disease"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "PARTICIPATES_GpBP": {
+      "_endpoints": [
+        "Gene",
+        "BiologicalProcess"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "PARTICIPATES_GpCC": {
+      "_endpoints": [
+        "Gene",
+        "CellularComponent"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "PARTICIPATES_GpMF": {
+      "_endpoints": [
+        "Gene",
+        "MolecularFunction"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "PARTICIPATES_GpPW": {
+      "_endpoints": [
+        "Gene",
+        "Pathway"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean",
+      "url": "String"
+    },
+    "PRESENTS_DpS": {
+      "_endpoints": [
+        "Disease",
+        "Symptom"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "REGULATES_GrG": {
+      "_endpoints": [
+        "Gene",
+        "Gene"
+      ],
+      "method": "String",
+      "source": "String",
+      "subtypes": "StringArray",
+      "unbiased": "Boolean"
+    },
+    "RESEMBLES_CrC": {
+      "_endpoints": [
+        "Compound",
+        "Compound"
+      ],
+      "license": "String",
+      "similarity": "Double",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "RESEMBLES_DrD": {
+      "_endpoints": [
+        "Disease",
+        "Disease"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "TREATS_CtD": {
+      "_endpoints": [
+        "Compound",
+        "Disease"
+      ],
+      "license": "String",
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "UPREGULATES_AuG": {
+      "_endpoints": [
+        "Anatomy",
+        "Gene"
+      ],
+      "source": "String",
+      "unbiased": "Boolean"
+    },
+    "UPREGULATES_CuG": {
+      "_endpoints": [
+        "Compound",
+        "Gene"
+      ],
+      "method": "String",
+      "source": "String",
+      "unbiased": "Boolean",
+      "z_score": "Double"
+    },
+    "UPREGULATES_DuG": {
+      "_endpoints": [
+        "Disease",
+        "Gene"
+      ],
+      "license": "String",
+      "log2_fold_change": "Double",
+      "source": "String",
+      "unbiased": "Boolean"
     }
   }
 }
