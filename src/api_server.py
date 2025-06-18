@@ -29,19 +29,15 @@ load_dotenv()
 # ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI()
 
-# ── Serve static files in production ─────────────────────────────────
-# This MUST come before CORS middleware
-if os.getenv("NODE_ENV") == "production":
-    from fastapi.staticfiles import StaticFiles
-    ui_dist = Path(__file__).parent.parent / "ui" / "dist"
-    if ui_dist.exists():
-        # API routes will take precedence over static files
-        app.mount("/", StaticFiles(directory=str(ui_dist), html=True), name="static")
+# ── CORS middleware ─────────────────────────────────────────────────
+# Get allowed origins from environment variable
+cors_origins = get_env_variable("CORS_ALLOWED_ORIGINS").split(",")
+# Strip whitespace from each origin
+cors_origins = [origin.strip() for origin in cors_origins]
 
-# ── CORS middleware (after static files) ─────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -210,3 +206,12 @@ async def ask_assistant(req: QueryRequest):
 
     except Exception as e:
         return {"error": str(e)}
+
+# ── Serve static files in production (MUST BE LAST!) ───────────────
+# This must come AFTER all API routes are defined
+if os.getenv("NODE_ENV") == "production":
+    from fastapi.staticfiles import StaticFiles
+    ui_dist = Path(__file__).parent.parent / "ui" / "dist"
+    if ui_dist.exists():
+        # API routes will take precedence over static files
+        app.mount("/", StaticFiles(directory=str(ui_dist), html=True), name="static")
