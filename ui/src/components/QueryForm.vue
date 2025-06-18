@@ -14,8 +14,8 @@
       
       <!-- Controls inside textarea -->
       <div class="absolute bottom-2 right-2 flex items-center gap-1">
-        <!-- LLM selector - PrimeVue Dropdown -->
-        <Dropdown
+        <!-- LLM selector - PrimeVue Select -->
+        <Select
           v-model="selectedLLM"
           :options="llmOptions"
           optionLabel="label"
@@ -23,8 +23,8 @@
           class="llm-dropdown"
           :pt="{
             root: { class: 'h-7 flex items-center text-xs' },
-            input: { class: 'py-0 pl-2 pr-0 text-xs bg-transparent border-0 text-gray-600 flex items-center h-full' },
-            trigger: { class: 'w-4 flex items-center justify-center pl-0' },
+            input: { class: 'py-0 pl-2 pr-3 text-xs bg-transparent border-0 text-gray-600 flex items-center h-full' },
+            trigger: { class: 'w-3 flex items-center justify-center absolute right-0.5 top-0 bottom-0' },
             panel: { class: 'text-sm' },
             item: { class: 'py-1.5 px-3 text-sm' }
           }"
@@ -40,8 +40,8 @@
           size="small"
           class="submit-button"
           :pt="{
-            root: { class: 'w-7 h-7' },
-            icon: { class: 'text-xs' }
+            root: { class: 'w-6 h-6 p-0' },
+            icon: { class: 'text-xs m-0' }
           }"
         />
       </div>
@@ -50,10 +50,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 
 const props = defineProps({
   modelValue: String,
@@ -104,7 +104,7 @@ function handleKeydown(event) {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  min-height: 5rem; /* Ensure minimum height for 3 lines */
+  min-height: 5rem;
 }
 
 :deep(.query-input.p-inputtextarea:focus) {
@@ -113,18 +113,20 @@ function handleKeydown(event) {
   outline: none;
 }
 
-/* Override PrimeVue button padding to make it more square */
+/* Submit button styling - smaller square */
 :deep(.submit-button.p-button) {
-  padding: 0;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
+  padding: 0 !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  min-height: 1.5rem !important;
 }
 
 :deep(.submit-button .p-button-icon) {
-  margin: 0;
+  margin: 0 !important;
 }
 
-/* Make dropdown look more subtle and integrated with no spacing */
+/* LLM dropdown styling */
 :deep(.llm-dropdown) {
   min-width: auto;
   background-color: transparent;
@@ -142,28 +144,25 @@ function handleKeydown(event) {
   background-color: #f3f4f6;
 }
 
-:deep(.llm-dropdown .p-dropdown-trigger) {
-  background: transparent;
-  padding: 0;
-  margin-left: -2px; /* Pull trigger closer to text */
+/* Remove padding from select container */
+:deep(.llm-dropdown.p-select) {
+  padding: 0 !important;
 }
 
-:deep(.llm-dropdown .p-dropdown-label) {
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  line-height: 1;
-  padding-right: 0;
+/* Adjust label spacing */
+:deep(.llm-dropdown .p-select-label) {
+  padding: 0.25rem 1.5rem 0.25rem 0.5rem !important;
+  margin: 0 !important;
 }
 
-/* Ensure proper vertical alignment */
-:deep(.llm-dropdown .p-inputtext) {
-  display: flex;
-  align-items: center;
+/* Position dropdown icon */
+:deep(.llm-dropdown .p-select-dropdown) {
+  width: 1rem !important;
+  right: 0.375rem !important;
+  position: absolute;
 }
 
-/* Override the dropdown icon spacing */
+/* Icon size */
 :deep(.llm-dropdown .p-icon) {
   width: 0.75rem;
   height: 0.75rem;
