@@ -57,7 +57,7 @@ const toast = useToast()
 
 function getModelLabel(provider) {
   const labels = {
-    'openai': ' (o4-mini)',
+    'openai': ' (gpt-5-mini)',
     'assistant': ' (OpenAI Assistant)',
     'google': ' (Gemini 2.5 Pro)'
   }

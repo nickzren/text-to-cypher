@@ -3,7 +3,7 @@ A lightweight framework converting natural language queries into Neo4j Cypher sc
 
 ## Web-based UI
 
-A new web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cypher UI"> (`ui` directory) has been added, enabling users to easily ask questions and receive Cypher scripts interactively via a browser. It defaults to using the `o4-mini` model or a customizable OpenAI Assistant, providing significantly improved accuracy and lower operational costs compared to the original AI agent setups.
+A new web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cypher UI"> (`ui` directory) has been added, enabling users to easily ask questions and receive Cypher scripts interactively via a browser. It defaults to using the `gpt-5-mini` model or a customizable OpenAI Assistant, providing significantly improved accuracy and lower operational costs compared to the original AI agent setups.
 
 <img src="ui/src/assets/text-to-cypher-ui-overview.png" width="600" alt="Text to Cypher UI">
 
