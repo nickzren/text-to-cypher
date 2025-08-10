@@ -63,7 +63,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'update:selectedProvider']);
 
 const llmOptions = [
-  { label: 'o4-mini', value: 'openai' },
+  { label: 'gpt-5-mini', value: 'openai' },
   { label: 'OpenAI Assistant', value: 'assistant' },
   { label: 'Gemini 2.5 Pro', value: 'google' }
 ];
