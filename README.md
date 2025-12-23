@@ -9,30 +9,27 @@
 [![Gemini](https://img.shields.io/badge/Gemini-2.5%20Pro-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A lightweight framework converting natural language queries into Neo4j Cypher scripts using AI agent-based frameworks and LLMs, with optional OpenAI Assistant integration and frontend UI.
+Lightweight AI agent converting natural language to Neo4j Cypher.
 
 ## Web-based UI
 
-A new web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cypher UI"> (`ui` directory) has been added, enabling users to easily ask questions and receive Cypher scripts interactively via a browser. It defaults to using the `gpt-5-mini` model or a customizable OpenAI Assistant, providing significantly improved accuracy and lower operational costs compared to the original AI agent setups.
+The web-based UI <img src="ui/src/assets/logo.png" width="50" alt="Text to Cypher UI"> enables users to ask questions and receive Cypher scripts interactively via a browser. It supports multiple LLM providers: OpenAI GPT-5-mini, Google Gemini 2.5 Pro, and OpenAI Assistant.
 
 <img src="ui/src/assets/text-to-cypher-ui-overview.png" width="600" alt="Text to Cypher UI">
 
-The backend now exposes `/api/schema`, returning the loaded Neo4j schema as JSON. The UI shows this information in a side panel for quick reference.
-For more details and setup instructions, see the [UI README](ui/README.md).
+The backend exposes `/api/schema`, returning the loaded Neo4j schema as JSON. The UI shows this in a side panel for quick reference. For more details, see the [UI README](ui/README.md).
 
 ---
 
-## AI Agent-based Framework Setup
-
-The following instructions are for setting up and running the lightweight AI agent-based frameworks.
+## Setup
 
 ### Prerequisites
 
 - Git
-- Python 3.10+
+- Python 3.12+
 - pip
 
-### Setup
+### Installation
 
 1. Clone the repository:
    ```sh
@@ -50,7 +47,7 @@ The following instructions are for setting up and running the lightweight AI age
 
 ```sh
 uv run python -m src.text2cypher_agent
-Ask> Show compounds that treat both type 2 diabetes mellitus and hypertension.
+You> Show compounds that treat both type 2 diabetes mellitus and hypertension.
 
 MATCH (c1:Compound)-[:TREATS_CtD]->(d1:Disease {name: 'type 2 diabetes mellitus'}), 
 (c1)-[:TREATS_CtD]->(d2:Disease {name: 'hypertension'})
