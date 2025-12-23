@@ -15,9 +15,9 @@ from functools import partial
 from typing import Optional, Dict
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from openai import OpenAI
 
 from src.text2cypher_agent import Text2CypherAgent
@@ -70,9 +70,38 @@ class QueryRequest(BaseModel):
     session_id: str  # Used for assistant threads only
     provider: Optional[str] = "openai"  # "openai" or "google"
 
+    @field_validator('query')
+    @classmethod
+    def query_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Query cannot be empty')
+        return v.strip()
+
 
 class SessionRequest(BaseModel):
     session_id: str
+
+# --------------------------------------------------------------------
+# Health check endpoints
+# --------------------------------------------------------------------
+@app.get("/health", tags=["ops"])
+async def health_check():
+    """Health check endpoint for container orchestration."""
+    return {"status": "healthy"}
+
+
+@app.get("/ready", tags=["ops"])
+async def readiness_check():
+    """Readiness check - verifies schema is loaded."""
+    try:
+        schema = get_schema()
+        return {
+            "ready": True,
+            "node_types": len(schema.get("NodeTypes", {})),
+            "relationship_types": len(schema.get("RelationshipTypes", {}))
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Not ready: {e}")
 
 # --------------------------------------------------------------------
 # Schema endpoint
@@ -87,25 +116,20 @@ async def fetch_schema():
 # --------------------------------------------------------------------
 @app.post("/api/ask", tags=["llm-agent"])
 async def ask_llm_agent(req: QueryRequest):
-    q = req.query.strip()
-    if not q:
-        return {"error": "Query cannot be empty."}
-    
     provider = req.provider or "openai"
     if provider not in ["openai", "google"]:
-        return {"error": f"Invalid provider: {provider}"}
-    
+        raise HTTPException(status_code=400, detail=f"Invalid provider: {provider}")
+
     agent = get_or_create_agent(provider)
     try:
         # Track providers for messages
         _MESSAGE_PROVIDERS.append("user")
         _MESSAGE_PROVIDERS.append(provider)
-        
-        cypher = agent.respond(q)
+
+        cypher = agent.respond(req.query)
         return {"answer": cypher}
     except Exception as e:
-        print(f"Error in ask_llm_agent: {e}")
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/history", tags=["shared"])
@@ -144,15 +168,11 @@ async def clear_shared_history(req: SessionRequest):
 @app.post("/api/assistant/ask", tags=["assistant"])
 async def ask_assistant(req: QueryRequest):
     """Send a question to the OpenAI Assistant (stateful)."""
-    q = req.query.strip()
-    if not q:
-        return {"error": "Query cannot be empty."}
-    
     try:
         # Track providers for messages
         _MESSAGE_PROVIDERS.append("user")
         _MESSAGE_PROVIDERS.append("assistant")
-        
+
         loop = asyncio.get_running_loop()
         # initialise thread on first use
         thread_id = _ASSISTANT_THREADS.get(req.session_id)
@@ -167,7 +187,7 @@ async def ask_assistant(req: QueryRequest):
                 client.beta.threads.messages.create,
                 thread_id=thread_id,
                 role="user",
-                content=q,
+                content=req.query,
             ),
         )
 
@@ -195,7 +215,7 @@ async def ask_assistant(req: QueryRequest):
             None,
             partial(client.beta.threads.messages.list, thread_id=thread_id),
         )
-        
+
         # Get the assistant's response
         for m in msgs.data:
             if m.role == "assistant":
@@ -205,7 +225,7 @@ async def ask_assistant(req: QueryRequest):
         return {"answer": "No response from assistant."}
 
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ── Serve static files in production (MUST BE LAST!) ───────────────
 # This must come AFTER all API routes are defined

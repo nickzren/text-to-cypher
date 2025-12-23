@@ -21,7 +21,24 @@ The backend exposes `/api/schema`, returning the loaded Neo4j schema as JSON. Th
 
 ---
 
-## Setup
+## Quick Start with Docker
+
+```sh
+# Clone and configure
+git clone git@github.com:nickzren/text-to-cypher.git
+cd text-to-cypher
+cp .env.example .env
+# Edit .env to add your API keys
+
+# Run with Docker Compose
+docker compose up
+```
+
+Open http://localhost:8000 for the UI and http://localhost:7474 for Neo4j Browser.
+
+---
+
+## Manual Setup
 
 ### Prerequisites
 
@@ -34,24 +51,35 @@ The backend exposes `/api/schema`, returning the loaded Neo4j schema as JSON. Th
 1. Clone the repository:
    ```sh
    git clone git@github.com:nickzren/text-to-cypher.git
+   cd text-to-cypher
    ```
-2. Install uv and set up environment:
+2. Install dependencies:
    ```sh
    pip install uv
-   cd text-to-cypher
    uv sync
+   cd ui && npm install && cd ..
    ```
-3. Update the `.env` file to set `OPENAI_API_KEY`.
+3. Configure environment:
+   ```sh
+   cp .env.example .env
+   # Edit .env to add your OPENAI_API_KEY and other settings
+   ```
 
 ### Run
 
+**CLI mode:**
 ```sh
 uv run python -m src.text2cypher_agent
 You> Show compounds that treat both type 2 diabetes mellitus and hypertension.
 
-MATCH (c1:Compound)-[:TREATS_CtD]->(d1:Disease {name: 'type 2 diabetes mellitus'}), 
+MATCH (c1:Compound)-[:TREATS_CtD]->(d1:Disease {name: 'type 2 diabetes mellitus'}),
 (c1)-[:TREATS_CtD]->(d2:Disease {name: 'hypertension'})
 RETURN c1, d1, d2
+```
+
+**Web UI mode:**
+```sh
+./scripts/run-dev.sh
 ```
 
 ### Data

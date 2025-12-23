@@ -1,32 +1,24 @@
 # Text-to-Cypher UI
 
-## 🛠 Tech Stack
+## Tech Stack
 
-- **Vue 3**
-- **PrimeVue**
-- **TypeScript**
-- **Vite**
-- **Axios**
+- **Vue 3** - UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Build tool and dev server
+- **PrimeVue** - UI component library
+- **TailwindCSS** - Styling
+- **Axios** - HTTP client
 
----
+## Development
 
-## 🚀 Initial Setup
+See the [main README](../README.md) for setup and running instructions.
 
-**Step 1: Install Dependencies**
+### UI-specific commands
 
-From the `ui` directory, run:
+From the `ui` directory:
 
 ```bash
-npm install
+npm install    # Install dependencies
+npm run dev    # Start dev server
+npm run build  # Build for production
 ```
-
-**Step 2: ▶️ Running the Application**
-
-From the root directory, run both frontend and backend:
-```bash
-./scripts/run-dev.sh
-```
-
-Or run them separately:
-- Frontend only (from `ui` directory): `npm run dev`
-- Backend only (from root): `uv run uvicorn src.api_server:app --reload`
