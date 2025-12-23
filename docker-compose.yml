@@ -1,0 +1,44 @@
+services:
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      args:
+        VITE_BROWSER_URL: ${VITE_BROWSER_URL:-http://localhost:7474}
+    ports:
+      - "8000:8000"
+    environment:
+      DB_URL: bolt://neo4j:7687
+      DB_NAME: neo4j
+      NEO4J_SCHEMA_PATH: data/input/neo4j_schema.json
+      SCHEMA_HINTS_PATH: data/input/schema_hints.json
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_API_MODEL: ${OPENAI_API_MODEL:-gpt-5-mini}
+      OPENAI_ASSISTANT_ID: ${OPENAI_ASSISTANT_ID}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-pro}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8000}
+      VITE_BROWSER_URL: http://localhost:7474
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  neo4j_data:

@@ -250,9 +250,18 @@ async function askAgent() {
       provider: selectedProvider.value 
     });
   } catch (err) {
+    const detail = err.response?.data?.detail;
+    let errorMsg = err.message || 'Unknown error.';
+    if (Array.isArray(detail)) {
+      errorMsg = detail.map(d => d.msg || d.message || JSON.stringify(d)).join('; ');
+    } else if (typeof detail === 'string') {
+      errorMsg = detail;
+    } else if (err.response?.data?.error) {
+      errorMsg = err.response.data.error;
+    }
     messages.value.push({
       role: 'assistant',
-      content: 'Error: ' + (err.response?.data?.error || err.message || 'Unknown error.'),
+      content: 'Error: ' + errorMsg,
       provider: selectedProvider.value
     });
   } finally {
