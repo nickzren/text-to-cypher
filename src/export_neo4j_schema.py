@@ -2,8 +2,12 @@ import argparse
 import json
 from pathlib import Path
 from neo4j import GraphDatabase
-from utils import get_env_variable
 import sys
+
+try:
+    from src.utils import get_env_variable
+except ModuleNotFoundError:  # pragma: no cover - fallback for direct execution
+    from utils import get_env_variable
 
 def _sort_schema(d: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
     """
@@ -21,31 +25,33 @@ def main():
     try:
         uri = get_env_variable("DB_URL")
         db_name = get_env_variable("DB_NAME")
+        db_user = get_env_variable("DB_USER", default="neo4j")
+        db_password = get_env_variable("DB_PASSWORD")
     except EnvironmentError as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
 
-    # ---- auth (uncomment if needed) ----
-    # user     = get_env_variable("DB_USER")
-    # password = get_env_variable("DB_PASSWORD")
-    # driver   = GraphDatabase.driver(uri, auth=(user, password))
-    driver   = GraphDatabase.driver(uri, auth=None)
+    auth = (db_user, db_password) if db_user and db_password else None
+    driver = GraphDatabase.driver(uri, auth=auth)
 
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with driver.session(database=db_name) as session:
-        node_schema = get_node_schema(session)
-        rel_schema  = get_relationship_schema(session)
+    try:
+        with driver.session(database=db_name) as session:
+            node_schema = get_node_schema(session)
+            rel_schema  = get_relationship_schema(session)
 
-        # sort keys for deterministic output
-        node_schema = _sort_schema(node_schema)
-        rel_schema  = _sort_schema(rel_schema)
+            # sort keys for deterministic output
+            node_schema = _sort_schema(node_schema)
+            rel_schema  = _sort_schema(rel_schema)
+    finally:
+        driver.close()
 
     schema = {"NodeTypes": node_schema, "RelationshipTypes": rel_schema}
     out_path = output_dir / "neo4j_schema.json"
     json_str = json.dumps(schema, indent=2, sort_keys=True)
-    out_path.write_text(json_str)
+    out_path.write_text(json_str, encoding="utf-8")
     print(f"Schema dumped → {out_path}")
 
 
@@ -107,8 +113,9 @@ def get_relationship_schema(session):
 
     # 3) sample endpoints for every relationship type
     for rtype in rel_schema:
+        safe_rtype = rtype.replace("`", "``")
         q_sample = f'''
-        MATCH (s)-[r:`{rtype}`]->(t)
+        MATCH (s)-[r:`{safe_rtype}`]->(t)
         WITH head(labels(s)) AS src, head(labels(t)) AS tgt, elementId(r) AS rid
         ORDER BY rid
         RETURN src, tgt

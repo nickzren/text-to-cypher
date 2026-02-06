@@ -42,3 +42,7 @@ logs/
 
 # Lock files
 uv.lock
+
+# Virtual environments / JS deps
+.venv/
+node_modules/

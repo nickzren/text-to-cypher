@@ -65,7 +65,11 @@ function getModelLabel(provider) {
 }
 
 function stripFences(text = '') {
-  return text.replace(/^```(?:cypher)?/i, '').replace(/```$/, '').trim()
+  const fencedMatch = text.match(/```(?:cypher)?\s*([\s\S]*?)```/i)
+  if (fencedMatch?.[1]) {
+    return fencedMatch[1].trim()
+  }
+  return text.replace(/```(?:cypher)?/gi, '').replace(/```/g, '').trim()
 }
 
 async function copyToClipboard(text) {

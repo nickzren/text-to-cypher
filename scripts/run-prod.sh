@@ -10,7 +10,9 @@ cd "$SCRIPT_DIR/.."
 
 # Run uvicorn with production settings
 # The --app-dir flag ensures proper module resolution
+PORT="${PORT:-8000}"
+
 exec uv run uvicorn src.api_server:app \
     --host 0.0.0.0 \
-    --port 8080 \
+    --port "$PORT" \
     --workers 1

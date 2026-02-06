@@ -2,14 +2,23 @@ services:
   neo4j:
     image: neo4j:5
     environment:
-      NEO4J_AUTH: neo4j/password
+      NEO4J_AUTH: ${DB_USER:-neo4j}/${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "7474:7474"
       - "7687:7687"
     volumes:
       - neo4j_data:/data
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      test:
+        [
+          "CMD",
+          "cypher-shell",
+          "-u",
+          "${DB_USER:-neo4j}",
+          "-p",
+          "${DB_PASSWORD:?DB_PASSWORD is required}",
+          "RETURN 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,6 +33,8 @@ services:
     environment:
       DB_URL: bolt://neo4j:7687
       DB_NAME: neo4j
+      DB_USER: ${DB_USER:-neo4j}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       NEO4J_SCHEMA_PATH: data/input/neo4j_schema.json
       SCHEMA_HINTS_PATH: data/input/schema_hints.json
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -33,7 +44,7 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_MODEL: ${GOOGLE_MODEL:-gemini-2.5-pro}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8000}
-      VITE_BROWSER_URL: http://localhost:7474
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-false}
     depends_on:
       neo4j:
         condition: service_healthy

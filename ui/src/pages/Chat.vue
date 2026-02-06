@@ -53,7 +53,7 @@
 
     <!-- 🄲  side panel (schema / quick cypher) -->
     <aside
-      v-show="sidebarVisible && (!isMobile || showSidebar)"
+      v-show="isMobile ? showSidebar : sidebarVisible"
       :style="{ width: schemaWidth + 'px' }"
       class="border-l border-gray-200 overflow-y-auto bg-gray-50 h-full z-10 fixed top-0 right-0 sm:static sm:block"
     >
@@ -125,6 +125,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import axios from 'axios';
+import { useToast } from 'primevue/usetoast';
 import QueryForm from '../components/QueryForm.vue';
 import ChatHistory from '../components/ChatHistory.vue';
 import SchemaViewer from '../components/SchemaViewer.vue';
@@ -146,7 +147,6 @@ function onResize() {
   isMobile.value = window.innerWidth < 640;
   if (isMobile.value) {
     showSidebar.value = false;
-    sidebarVisible.value = false;
   } else if (!sidebarVisible.value) {
     sidebarVisible.value = true;
   }
@@ -185,6 +185,7 @@ const chatMargin = computed(() => {
 const query = ref('');
 const messages = ref(/** @type {{role:string,content:string,provider?:string}[]} */([]));
 const loading = ref(false);
+const toast = useToast();
 // remember last‑chosen provider across page refreshes
 const selectedProvider = ref(localStorage.getItem('selectedProvider') || 'openai');
 const sessionIdKey = 'sessionId';
@@ -201,7 +202,12 @@ function runQuery(cypher) {
   // Vite exposes env vars prefixed with VITE_
   const base = import.meta.env.VITE_BROWSER_URL;
   if (!base) {
-    console.error('VITE_BROWSER_URL is not defined');
+    toast.add({
+      severity: 'error',
+      summary: 'Missing configuration',
+      detail: 'VITE_BROWSER_URL is not configured.',
+      life: 3000
+    });
     return;
   }
 
@@ -271,7 +277,7 @@ async function askAgent() {
 
 async function loadHistory() {
   // Always use the shared history endpoint
-  const endpoint = `/api/history?session_id=${sessionId}`;
+  const endpoint = `/api/history?session_id=${encodeURIComponent(sessionId)}`;
     
   try {
     const res = await axios.get(endpoint);

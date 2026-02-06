@@ -13,7 +13,12 @@ def get_project_root() -> Path:
     for parent in current_path.parents:
         if (parent / ".env").exists():
             return parent
-    return current_path
+        if (parent / ".git").exists():
+            return parent
+        if (parent / "pyproject.toml").exists():
+            return parent
+    # src/utils.py -> project root
+    return current_path.parents[1]
 
 
 def get_env_variable(name: str, default=None, resolve_path=False) -> str:

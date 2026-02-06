@@ -1,39 +1,50 @@
 import asyncio
 import os
-import sys
-import types
 import unittest
+from pathlib import Path
+import sys
+from unittest.mock import patch
 
-sys.modules.setdefault('dotenv', types.SimpleNamespace(load_dotenv=lambda: None))
-sys.modules.setdefault('openai', types.SimpleNamespace(OpenAI=lambda: None))
-sys.modules.setdefault(
-    'src.text2cypher_agent',
-    types.SimpleNamespace(
-        Text2CypherAgent=type(
-            'Dummy',
-            (),
-            {
-                'respond': lambda self, q: '',
-                'get_history': lambda self: [],
-                'clear_history': lambda self: None,
-            },
-        )
-    ),
-)
+from pydantic import ValidationError
 
-os.environ.setdefault('OPENAI_ASSISTANT_ID', 'dummy')
-os.environ.setdefault('NEO4J_SCHEMA_PATH', 'data/input/neo4j_schema.json')
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import src.api_server as api_server
+import src.schema_loader as schema_loader
 
 
 class SchemaEndpointTest(unittest.TestCase):
     def test_schema_keys(self):
         schema = asyncio.run(api_server.fetch_schema())
-        self.assertIn('NodeTypes', schema)
-        self.assertIn('RelationshipTypes', schema)
+        self.assertIn("NodeTypes", schema)
+        self.assertIn("RelationshipTypes", schema)
+
+    def test_schema_hints_path_is_optional(self):
+        old_cached_hints = schema_loader._cached_hints
+        old_hints_loaded = schema_loader._hints_loaded
+        try:
+            schema_loader._cached_hints = None
+            schema_loader._hints_loaded = False
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("SCHEMA_HINTS_PATH", None)
+                self.assertIsNone(schema_loader.get_schema_hints())
+        finally:
+            schema_loader._cached_hints = old_cached_hints
+            schema_loader._hints_loaded = old_hints_loaded
+
+    def test_session_id_validation(self):
+        with self.assertRaises(ValidationError):
+            api_server.QueryRequest(query="q", session_id="bad id")
+
+    def test_query_max_length_validation(self):
+        with self.assertRaises(ValidationError):
+            api_server.QueryRequest(
+                query="x" * (api_server.MAX_QUERY_LENGTH + 1),
+                session_id="ok-session",
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-
